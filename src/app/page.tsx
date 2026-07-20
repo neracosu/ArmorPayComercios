@@ -36,14 +36,18 @@ const PARA_QUIEN = [
     icono: Store,
     titulo: "Comercio de una o dos cajas",
     texto:
-      "Bodegón, farmacia, tienda de barrio. Dejás de confiar en la captura y de perder minutos revisando el teléfono con el cliente esperando.",
-    puntos: ["Validación por referencia", "Historial de lo cobrado", "Instalable en la PC de la caja"],
+      "Bodegón, farmacia, tienda de barrio. Dejás de recibir llamadas para confirmar pagos y de revisar el teléfono con el cliente esperando del otro lado del mostrador.",
+    puntos: [
+      "Tu cajera confirma sin tu clave del banco",
+      "Historial de lo cobrado",
+      "Instalable en la PC de la caja",
+    ],
   },
   {
     icono: Building2,
     titulo: "Cadena con varias sucursales",
     texto:
-      "Acá es donde el resto de las herramientas se queda corto. Cada caja ve lo suyo, cada turno cierra con su comprobante, y vos ves todo consolidado.",
+      "Acá es donde el resto de las herramientas se queda corto. Cada caja ve lo suyo, cada turno cierra con su comprobante, y vos ves todo consolidado sin pasar por el teléfono.",
     puntos: ["Aislamiento por caja y sucursal", "Turnos con cierre Z", "Alarma de doble cobro"],
   },
 ];
@@ -179,6 +183,57 @@ export default function Portada() {
             La cajera teclea los últimos dígitos de la referencia. Si el dinero
             entró, aparece en segundos con el monto y el banco de origen. Si no
             entró, no aparece — y esa es toda la respuesta que necesita.
+          </p>
+
+          <div className="mt-12 border-t border-white/10 pt-10">
+            <h3 className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
+              ¿Y el mensaje del banco?
+            </h3>
+            <div className="mt-5 grid max-w-3xl gap-4 text-sm leading-relaxed text-white/60 sm:grid-cols-2">
+              <p>
+                A veces llega tarde. A veces no llega. Y cuando llega, tu cajera
+                está confiando en un mensaje de texto que también se puede
+                falsificar — igual que la captura.
+              </p>
+              <p>
+                Un movimiento en tu estado de cuenta no se falsifica. Es la
+                diferencia entre creerle a una notificación y preguntarle al
+                banco.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── El cuello de botella que nadie nombra ── */}
+      <section className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
+        <h2 className="max-w-2xl font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
+          Hoy, el único que puede confirmar un pago sos vos.
+        </h2>
+        <div className="mt-6 grid max-w-3xl gap-4 leading-relaxed text-tinta-suave sm:grid-cols-2">
+          <p>
+            Tu cajera no tiene acceso a la cuenta donde entra el dinero, y hacés
+            bien: nadie le da la clave del banco a la caja. Entonces te llama, o
+            le escribe al encargado, y el cliente espera parado mientras alguien
+            revisa el teléfono.
+          </p>
+          <p>
+            Multiplicalo por las veces que pasa en un día, y por cada sucursal.
+            El cuello de botella no es el banco: sos vos, atendiendo consultas
+            de pago mientras hacés otra cosa.
+          </p>
+        </div>
+
+        <div className="mt-10 rounded-card border-2 border-marca-600 bg-marca-50 p-7 sm:p-9">
+          <p className="font-display text-xl font-bold leading-snug tracking-tight text-tinta sm:text-2xl">
+            Tu cajera confirma sola.
+            <br />
+            Sin ver tu cuenta, sin tu clave, sin llamarte.
+          </p>
+          <p className="mt-4 max-w-2xl leading-relaxed text-tinta-suave">
+            Ve exactamente una cosa: si ese pago entró o no. No ve tu saldo, no
+            ve tus otros movimientos, no ve lo que cobraron las demás cajas. Y
+            vos ves todo, desde donde estés.
           </p>
         </div>
       </section>
