@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PLANES } from "@/lib/planes";
 import {
   ArrowRight,
   Check,
@@ -82,12 +83,20 @@ export default function Portada() {
           <span className="font-display text-lg font-bold tracking-tight text-tinta">
             Armor<span className="text-marca-700">Pay</span>
           </span>
-          <Link
-            href="/login"
-            className="rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
-          >
-            Entrar
-          </Link>
+          <div className="flex items-center gap-1">
+            <a
+              href="#planes"
+              className="rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
+            >
+              Precios
+            </a>
+            <Link
+              href="/login"
+              className="rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
+            >
+              Entrar
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -293,6 +302,83 @@ export default function Portada() {
         </div>
       </section>
 
+      {/* ── Planes ── */}
+      <section id="planes" className="border-t border-tinta-borde bg-tinta-fondo px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
+            Precios
+          </h2>
+          <p className="mt-3 max-w-2xl leading-relaxed text-tinta-suave">
+            Se cuenta el <strong className="font-semibold text-tinta">cobro confirmado</strong>, no
+            la búsqueda. Si el banco tarda y tu cajera busca tres veces, eso es
+            un cobro, no tres.
+          </p>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {PLANES.map((p) => {
+              const destacado = p.clave === "COMERCIO";
+              return (
+                <div
+                  key={p.clave}
+                  className={`flex flex-col rounded-card border bg-white p-7 ${
+                    destacado ? "border-2 border-marca-600" : "border-tinta-borde"
+                  }`}
+                >
+                  <h3 className="font-display text-lg font-bold tracking-tight text-tinta">
+                    {p.nombre}
+                  </h3>
+                  <p className="mt-3 font-display text-4xl font-bold tracking-tight text-tinta">
+                    {p.precioUsd === 0 ? "Gratis" : `$${p.precioUsd}`}
+                    {p.precioUsd > 0 && (
+                      <span className="text-base font-medium text-tinta-tenue"> /mes</span>
+                    )}
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-tinta-suave">{p.paraQuien}</p>
+
+                  <ul className="mt-5 flex-1 space-y-2">
+                    {p.incluye.map((linea) => (
+                      <li key={linea} className="flex items-start gap-2 text-sm text-tinta-suave">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-marca-700" aria-hidden />
+                        {linea}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {p.excedente > 0 && (
+                    <p className="mt-5 border-t border-tinta-borde pt-4 text-sm text-tinta-tenue">
+                      Pasado ese piso, ${p.excedente.toFixed(3).replace(/0+$/, "")} por cobro.
+                    </p>
+                  )}
+
+                  <Link
+                    href="/propuesta"
+                    className={`mt-5 block rounded-control px-4 py-2.5 text-center text-sm font-medium transition-colors ${
+                      destacado
+                        ? "bg-marca-700 text-white hover:bg-marca-900"
+                        : "border border-tinta-borde text-tinta-suave hover:bg-tinta-fondo"
+                    }`}
+                  >
+                    {p.precioUsd === 0 ? "Probarlo" : "Pedir una propuesta"}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 rounded-card border border-marca-600 bg-marca-50 p-6">
+            <p className="font-display font-bold tracking-tight text-tinta">
+              Pasarte del piso nunca te corta.
+            </p>
+            <p className="mt-2 max-w-2xl leading-relaxed text-tinta-suave">
+              Si un sábado vendes más de lo previsto, tus cajas siguen validando
+              igual y el excedente aparece en la factura. Un sistema que se
+              apaga cuando más vendes te obliga a entregar sin verificar, que es
+              exactamente lo que viniste a evitar.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Lo que NO hacemos: la confianza se gana siendo explícito ── */}
       <section className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
         <h2 className="font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
@@ -337,9 +423,22 @@ export default function Portada() {
       </section>
 
       <footer className="border-t border-tinta-borde px-6 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 text-sm text-tinta-tenue sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-display font-bold text-tinta">ArmorPay</span>
-          <span>Plataforma de validación de pagos · Venezuela</span>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-sm text-tinta-tenue sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="font-display font-bold text-tinta">ArmorPay</span>
+            <span className="ml-2">Plataforma de validación de pagos · Venezuela</span>
+          </div>
+          <p>
+            Un proyecto de{" "}
+            <a
+              href="https://vipsoft.cloud"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-marca-700 underline underline-offset-4 hover:text-marca-900"
+            >
+              VipSoft
+            </a>
+          </p>
         </div>
       </footer>
     </div>

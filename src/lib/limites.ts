@@ -1,5 +1,5 @@
-import type { Plan } from "@prisma/client";
 import { prisma } from "./prisma";
+import { planPorClave, INFINITO, type DefinicionPlan } from "./planes";
 
 /**
  * Planes y consumo — decisión de cobro del 2026-07-20.
@@ -26,23 +26,6 @@ import { prisma } from "./prisma";
  * pagando exceso.
  */
 
-export interface DefinicionPlan {
-  nombre: string;
-  cobrosIncluidos: number;
-  cajas: number;
-  sucursales: number;
-  /** USD por cobro pasado el piso. */
-  excedente: number;
-}
-
-const INFINITO = Number.POSITIVE_INFINITY;
-
-export const PLANES: Record<Plan, DefinicionPlan> = {
-  PRUEBA: { nombre: "Prueba", cobrosIncluidos: 200, cajas: 2, sucursales: 1, excedente: 0 },
-  COMERCIO: { nombre: "Comercio", cobrosIncluidos: 2_000, cajas: 8, sucursales: 3, excedente: 0.02 },
-  CADENA: { nombre: "Cadena", cobrosIncluidos: 10_000, cajas: INFINITO, sucursales: INFINITO, excedente: 0.015 },
-};
-
 export interface Veredicto {
   permitido: boolean;
   motivo?: string;
@@ -53,7 +36,7 @@ async function planDe(organizationId: string): Promise<DefinicionPlan> {
     where: { id: organizationId },
     select: { plan: true },
   });
-  return PLANES[org?.plan ?? "PRUEBA"];
+  return planPorClave(org?.plan ?? "PRUEBA");
 }
 
 /**
