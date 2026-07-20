@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Building2, Inbox, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, Building2, Inbox, ShieldAlert, Users } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import CerrarSesion from "@/components/CerrarSesion";
 
@@ -19,6 +19,7 @@ const SECCIONES = [
   { href: "/plataforma/solicitudes", icono: Inbox, texto: "Solicitudes" },
   { href: "/plataforma/comercios", icono: Building2, texto: "Comercios" },
   { href: "/plataforma/usuarios", icono: Users, texto: "Usuarios" },
+  { href: "/plataforma/consumo", icono: BarChart3, texto: "Consumo" },
 ];
 
 export default async function PlataformaLayout({ children }: { children: React.ReactNode }) {
