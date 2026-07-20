@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
+import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { puedeCrearCaja, puedeCrearSucursal } from "@/lib/limites";
 
@@ -27,9 +27,6 @@ async function exigirAdminComercio() {
   return session;
 }
 
-function generarPassword(): string {
-  return randomBytes(9).toString("base64url").replace(/[^a-zA-Z0-9]/g, "x");
-}
 
 const sucursalSchema = z.object({
   nombre: z.string().trim().min(2, "Pon un nombre para la sucursal").max(80),

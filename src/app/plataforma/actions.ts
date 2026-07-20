@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { PrismaClient, type LeadEstado } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { echoTest } from "../../../gateway/bdt";
@@ -34,10 +34,6 @@ export type Resultado =
 
 const normalizarRif = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-/** Contraseña inicial legible pero no adivinable. Se muestra UNA sola vez. */
-function generarPassword(): string {
-  return randomBytes(9).toString("base64url").replace(/[^a-zA-Z0-9]/g, "x");
-}
 
 export async function cambiarEstadoLead(
   leadId: string,

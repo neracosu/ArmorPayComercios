@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { normalizeUsername } from "./username";
+import { segundosDeBloqueo, registrarFallo, limpiarFallos } from "./login-throttle";
 
 /**
  * Autenticación por usuario y contraseña, con el comercio incorporado.
@@ -31,19 +32,31 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
+        const usuario = normalizeUsername(credentials.username);
+
+        // Freno de fuerza bruta: tras varios fallos seguidos, se rechaza aunque
+        // la clave sea correcta. Es lo que hace segura una contraseña corta.
+        if (segundosDeBloqueo(usuario) > 0) return null;
 
         const user = await authDb.user.findUnique({
-          where: { username: normalizeUsername(credentials.username) },
+          where: { username: usuario },
           include: { organization: { select: { status: true, razonSocial: true } } },
         });
-        if (!user || !user.isActive) return null;
+        if (!user || !user.isActive) {
+          registrarFallo(usuario);
+          return null;
+        }
 
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          registrarFallo(usuario);
+          return null;
+        }
 
         // Un comercio suspendido no opera, por más que la caja tenga credenciales.
         if (user.organization && user.organization.status === "SUSPENDIDA") return null;
 
+        limpiarFallos(usuario);
         return {
           id: user.id,
           name: user.name,
