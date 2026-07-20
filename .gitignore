@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secretos — NUNCA commitear
+.env
+.env.local
+.dbpw.tmp
+
+logs/
+*.log
+.DS_Store

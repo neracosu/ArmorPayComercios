@@ -1,0 +1,255 @@
+// ArmorPay Cloud — esquema multi-tenant.
+//
+// Regla estructural: TODO modelo que contenga datos de un comercio lleva
+// `organizationId`. Sin esa columna, la extensión de Prisma que fuerza el
+// aislamiento (`src/lib/prisma.ts`) no tiene qué filtrar y el modelo queda
+// expuesto entre tenants — que es exactamente el bug R-16 del proyecto viejo.
+// Si agregás un modelo nuevo con datos de comercio y NO le ponés
+// `organizationId`, estás abriendo una fuga.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  // En cPanel el usuario no puede crear bases por SQL: la shadow se crea a mano
+  // con `uapi Mysql create_database`. Solo la usa `migrate dev` en desarrollo.
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum Role {
+  PLATFORM_ADMIN // nosotros: operamos la plataforma
+  ORG_ADMIN // dueño del comercio
+  OPERATOR // caja
+}
+
+enum OrgStatus {
+  REGISTRADA // se registró, faltan recaudos
+  RECAUDOS_COMPLETOS // cargó todo, esperando nuestra revisión
+  ENVIADA_AL_BANCO // solicitud de afiliación cursada
+  CERTIFICACION // el banco afilió; falta certificar la integración
+  ACTIVA // opera normalmente
+  RECHAZADA
+  SUSPENDIDA
+}
+
+enum KeyStatus {
+  SIN_LLAVE
+  CARGADA // pegada, todavía no probada contra el banco
+  VERIFICADA // echo-test GES0000
+  INVALIDA // el banco la rechazó
+}
+
+/// Tenant. Raíz de todo dato de comercio.
+model Organization {
+  id          String    @id @default(cuid())
+  slug        String    @unique // subdominio / identificador en URLs
+  razonSocial String // la certificada ante el banco — el checkout muestra ESTA
+  rif         String    @unique // normalizado sin guiones: J500198175
+  status      OrgStatus @default(REGISTRADA)
+
+  // Llave de Trabajo del BDT. El banco la emite POR RIF, no por cuenta: una
+  // organización con varias cuentas comparte llave. Campo de SOLO ESCRITURA:
+  // se pega y nunca se vuelve a leer completa desde la interfaz.
+  authKeyEnc     String?   @db.Text // AES-256-GCM
+  authKeyHint    String? // "DDF…755" — se guarda al grabar para no descifrar al pintar
+  authKeyStatus  KeyStatus @default(SIN_LLAVE)
+  authKeyVersion Int       @default(1) // permite rotar la clave de cifrado sin downtime
+  lastVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  branches     Branch[]
+  accounts     BankAccount[]
+  shifts       Shift[]
+  claims       PaymentClaim[]
+  transactions BankTransaction[]
+  keyEvents    AuthKeyEvent[]
+
+  @@index([status])
+}
+
+/// Bitácora de la Llave de Trabajo. Visible para el comercio: es su credencial.
+model AuthKeyEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  action         String // cargada | reemplazada | rotada | verificada | invalidada
+  actorUserId    String? // null = proceso automático
+  detail         String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model User {
+  id             String  @id @default(cuid())
+  organizationId String? // null SOLO para PLATFORM_ADMIN, que no pertenece a un comercio
+  username       String  @unique
+  passwordHash   String
+  name           String
+  role           Role    @default(OPERATOR)
+  isActive       Boolean @default(true)
+  tokenVersion   Int     @default(0) // bump = invalida todos los JWT del user al instante
+
+  branchId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  shifts       Shift[]
+  claims       PaymentClaim[]
+
+  @@index([organizationId])
+}
+
+model Branch {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        User[]
+  shifts       Shift[]
+  claims       PaymentClaim[]
+
+  // Únicos POR organización: dos comercios distintos pueden tener su "Principal".
+  @@unique([organizationId, code])
+  @@unique([organizationId, name])
+}
+
+model BankAccount {
+  id             String   @id @default(cuid())
+  organizationId String
+  accountNumber  String   @unique // 20 dígitos — único global: una cuenta pertenece a un solo comercio
+  alias          String
+  merchantCode   String?  @unique
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+}
+
+/// Créditos que el banco notificó (webhook o estado de cuenta en vivo).
+///
+/// `organizationId` está DESNORMALIZADO a propósito: el banco identifica el
+/// pago por `numeroCuenta` y nada más. Sin esta columna, la extensión de
+/// Prisma no tendría qué filtrar justo en la tabla que guarda monto, banco y
+/// cédula del pagador de TODOS los comercios. Lo resuelve el gateway en la
+/// ingesta, que ya sabe a qué organización pertenece cada cuenta.
+model BankTransaction {
+  id               String   @id @default(cuid())
+  organizationId   String
+  numeroCuenta     String
+  montoTransaccion String
+  fechaTransaccion String // yyyy-mm-dd
+  horaTransaccion  String // hhmmss
+  referencia       String
+  tipo             String // CREDITO | DEBITO
+  descripcion      String   @db.Text
+  desdeBanco       String
+  tipoProd         String // CELE | CNTA
+  desdeCuenta      String
+  desdeDni         String
+  origen           String // webhook | estado_de_cuenta
+  receivedAt       DateTime @default(now())
+  rawPayload       String   @db.MediumText
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  claims       PaymentClaim[]
+
+  @@unique([numeroCuenta, referencia, fechaTransaccion, horaTransaccion], name: "uniq_tx")
+  @@index([organizationId, receivedAt])
+  @@index([organizationId, referencia])
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+model Shift {
+  id             String      @id @default(cuid())
+  organizationId String
+  userId         String
+  branchId       String
+  status         ShiftStatus @default(OPEN)
+  attendant      String?
+  openedAt       DateTime    @default(now())
+  closedAt       DateTime?
+  closingNote    String?     @db.Text
+  totalCount     Int?
+  totalAmount    Decimal?    @db.Decimal(18, 2)
+  // "un solo turno OPEN por caja" sin partial-unique: = userId mientras OPEN,
+  // null al cerrar (MySQL permite múltiples NULL en UNIQUE).
+  openKey        String?     @unique
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch       Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  claims       PaymentClaim[]
+
+  @@index([organizationId, openedAt])
+  @@index([userId, openedAt])
+}
+
+enum ClaimSource {
+  LOOKUP
+  ONLINE
+}
+
+/// Ledger de cobros. `primaryKey @unique` = un solo cobro primario por pago
+/// (antifraude one-time redemption, arbitrado por la base, race-safe).
+model PaymentClaim {
+  id                String      @id @default(cuid())
+  organizationId    String
+  shiftId           String
+  userId            String
+  branchId          String
+  source            ClaimSource @default(LOOKUP)
+  bankTransactionId String?
+  reference         String
+  amount            Decimal     @db.Decimal(18, 2)
+  numeroCuenta      String
+  payerBank         String?
+  fechaTransaccion  String?
+  horaTransaccion   String?
+  isDuplicate       Boolean     @default(false)
+  duplicateOfId     String?
+  ackReason         String?     @db.Text
+  claimedAt         DateTime    @default(now())
+  primaryKey        String?     @unique
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  shift           Shift            @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch          Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  bankTransaction BankTransaction? @relation(fields: [bankTransactionId], references: [id], onDelete: Restrict)
+  duplicateOf     PaymentClaim?    @relation("Dup", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates      PaymentClaim[]   @relation("Dup")
+
+  @@index([organizationId, claimedAt])
+  @@index([shiftId])
+  @@index([bankTransactionId])
+}
+
+/// Config de plataforma (no de tenant). NO lleva organizationId a propósito.
+model PlatformSetting {
+  key       String   @id
+  value     String   @db.Text
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}

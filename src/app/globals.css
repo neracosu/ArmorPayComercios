@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Los montos no deben "bailar" entre filas: la cajera tiene que leerlos de un
+   vistazo. Ver la dirección de diseño en el plan del proyecto. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
