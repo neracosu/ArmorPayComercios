@@ -22,7 +22,17 @@ function getPool(): mysql.Pool {
   if (pool) return pool;
   const url = process.env.SOURCE_DATABASE_URL;
   if (!url) throw new Error("SOURCE_DATABASE_URL no configurada");
-  pool = mysql.createPool({ uri: url, connectionLimit: 2, waitForConnections: true });
+  pool = mysql.createPool({
+    uri: url,
+    connectionLimit: 2,
+    waitForConnections: true,
+    // OBLIGATORIO. Prisma guarda los DATETIME en UTC, pero mysql2 los
+    // interpreta en la zona del proceso (acá, Caracas) salvo que se le diga.
+    // Sin esto, cada `receivedAt` sale 4 horas adelantado: se corrompen las
+    // marcas de tiempo en el SaaS y el cursor queda en el futuro, con lo cual
+    // el gateway deja de ver los pagos nuevos hasta que el reloj lo alcance.
+    timezone: "Z",
+  });
   return pool;
 }
 

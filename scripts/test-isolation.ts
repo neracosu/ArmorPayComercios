@@ -151,7 +151,21 @@ async function main() {
     check("runAsPlatform ve los dos tenants", rows.length === 3, `— vio ${rows.length}`);
   });
 
-  // 9. Los modelos que no son de tenant no exigen contexto.
+  // 9. Promesa perezosa: callback NO async, con el await afuera del contexto.
+  //    Las promesas de Prisma no ejecutan hasta que se las espera, así que este
+  //    caso corría la extensión fuera del contexto y lanzaba. Cubierto desde
+  //    que `runWithTenant` absorbe el await.
+  await runWithTenant(orgA.id, () =>
+    prisma.bankTransaction.findMany({ select: { organizationId: true } })
+  ).then((rows) => {
+    check(
+      "callback no-async (promesa perezosa) resuelve dentro del contexto",
+      rows.length > 0 && rows.every((r) => r.organizationId === orgA.id),
+      `— devolvió ${rows.length} fila(s)`
+    );
+  });
+
+  // 10. Los modelos que no son de tenant no exigen contexto.
   const settings = await prisma.platformSetting.findMany();
   check("PlatformSetting no exige contexto de tenant", Array.isArray(settings));
 

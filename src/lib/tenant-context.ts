@@ -29,9 +29,22 @@ export interface TenantContext {
 
 const storage = new AsyncLocalStorage<TenantContext>();
 
-/** Corre `fn` con los datos acotados a una organización. */
-export function runWithTenant<T>(organizationId: string, fn: () => T): T {
-  return storage.run({ organizationId, platformScope: false }, fn);
+/**
+ * Corre `fn` con los datos acotados a una organización.
+ *
+ * El `await` va DENTRO del contexto a propósito. Las promesas de Prisma son
+ * perezosas: `prisma.x.create()` no ejecuta nada hasta que se la espera, así
+ * que si el `await` quedara afuera, la extensión correría fuera del contexto y
+ * no encontraría el tenant. Falla cerrado —lanza, no filtra— pero rompe algo
+ * que debería funcionar. Absorbiendo el await acá, da igual cómo lo escriba
+ * quien llame: `() => prisma.x.create(...)` y `async () => { await ... }`
+ * funcionan los dos.
+ */
+export async function runWithTenant<T>(
+  organizationId: string,
+  fn: () => T | Promise<T>
+): Promise<T> {
+  return storage.run({ organizationId, platformScope: false }, async () => await fn());
 }
 
 /**
@@ -41,8 +54,11 @@ export function runWithTenant<T>(organizationId: string, fn: () => T): T {
  * revisión. Usos legítimos: panel de plataforma, ingesta del gateway que
  * resuelve a qué comercio pertenece una cuenta, migraciones.
  */
-export function runAsPlatform<T>(reason: string, fn: () => T): T {
-  return storage.run({ organizationId: null, platformScope: true, reason }, fn);
+export async function runAsPlatform<T>(reason: string, fn: () => T | Promise<T>): Promise<T> {
+  return storage.run(
+    { organizationId: null, platformScope: true, reason },
+    async () => await fn()
+  );
 }
 
 /** Contexto actual, o undefined si no se abrió ninguno. */
