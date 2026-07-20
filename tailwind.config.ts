@@ -50,6 +50,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--fuente-sans)", "system-ui", "-apple-system", "sans-serif"],
+        display: ["var(--fuente-display)", "var(--fuente-sans)", "sans-serif"],
       },
       borderRadius: {
         // Moderados en botones y tarjetas; mínimos en filas de tabla. Los radios

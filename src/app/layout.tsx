@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Archivo } from "next/font/google";
 import "./globals.css";
 
 // Inter: cifras tabulares nativas y buena distinción entre 1/l/I y 0/O, que
@@ -7,6 +7,15 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--fuente-sans",
+  display: "swap",
+});
+
+// Archivo para titulares: más ancha y con peso institucional, sin caer en el
+// serif de alto contraste que hoy usan todos. Solo en la portada — el panel
+// operativo no necesita personalidad, necesita que se lea rápido.
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--fuente-display",
   display: "swap",
 });
 
@@ -18,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={inter.variable}>
+    <html lang="es" className={`${inter.variable} ${archivo.variable}`}>
       <body className="min-h-screen bg-tinta-fondo font-sans text-tinta antialiased">
         {children}
       </body>
