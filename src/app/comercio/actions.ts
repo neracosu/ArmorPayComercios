@@ -57,7 +57,7 @@ export async function crearSucursal(
 
   return withSessionTenant(session, async () => {
     // Todo alta de sucursal pasa por acá: es donde va a enchufarse el plan.
-    const veredicto = await puedeCrearSucursal();
+    const veredicto = await puedeCrearSucursal(session.user.organizationId!);
     if (!veredicto.permitido) return { ok: false, error: veredicto.motivo! };
 
     try {
@@ -129,7 +129,7 @@ export async function crearCaja(
 
   return withSessionTenant(session, async () => {
     // Todo alta de caja pasa por acá: es donde va a enchufarse el plan.
-    const veredicto = await puedeCrearCaja();
+    const veredicto = await puedeCrearCaja(session.user.organizationId!);
     if (!veredicto.permitido) return { ok: false, error: veredicto.motivo! };
 
     // La sucursal se busca DENTRO del contexto: si el id fuera de otro

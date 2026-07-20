@@ -35,6 +35,12 @@ enum OrgStatus {
   SUSPENDIDA
 }
 
+enum Plan {
+  PRUEBA // captación: piso chico, invita a elegir plan
+  COMERCIO
+  CADENA
+}
+
 enum KeyStatus {
   SIN_LLAVE
   CARGADA // pegada, todavía no probada contra el banco
@@ -49,6 +55,7 @@ model Organization {
   razonSocial String // la certificada ante el banco — el checkout muestra ESTA
   rif         String    @unique // normalizado sin guiones: J500198175
   status      OrgStatus @default(REGISTRADA)
+  plan        Plan      @default(PRUEBA)
 
   // Llave de Trabajo del BDT. El banco la emite POR RIF, no por cuenta: una
   // organización con varias cuentas comparte llave. Campo de SOLO ESCRITURA:

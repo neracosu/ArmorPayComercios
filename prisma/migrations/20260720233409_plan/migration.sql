@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Organization` ADD COLUMN `plan` ENUM('PRUEBA', 'COMERCIO', 'CADENA') NOT NULL DEFAULT 'PRUEBA';
