@@ -108,13 +108,13 @@ export default function Portada() {
         </p>
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <a
-            href="#propuesta"
+          <Link
+            href="/propuesta"
             className="inline-flex items-center gap-2 rounded-control bg-marca-700 px-5 py-3 font-medium text-white transition-colors hover:bg-marca-900"
           >
             Pedir una propuesta
             <ArrowRight className="h-4 w-4" aria-hidden />
-          </a>
+          </Link>
           <a
             href="#como-funciona"
             className="text-sm font-medium text-tinta-suave underline underline-offset-4 hover:text-tinta"
@@ -267,13 +267,13 @@ export default function Portada() {
             Cuántas cajas tenés, en qué banco cobrás y qué se te complica. Con
             eso armamos una propuesta concreta, sin plantillas.
           </p>
-          <a
-            href="mailto:hola@armorpay.net?subject=Quiero%20una%20propuesta%20de%20ArmorPay&body=Empresa%3A%0ARIF%3A%0ACantidad%20de%20cajas%3A%0ASucursales%3A%0ABanco%20donde%20cobran%3A%0AQu%C3%A9%20se%20les%20complica%20hoy%3A%0A"
+          <Link
+            href="/propuesta"
             className="mt-8 inline-flex items-center gap-2 rounded-control bg-marca-700 px-5 py-3 font-medium text-white transition-colors hover:bg-marca-900"
           >
             Pedir una propuesta
             <ArrowRight className="h-4 w-4" aria-hidden />
-          </a>
+          </Link>
           <p className="mt-4 text-sm text-tinta-tenue">
             Hoy operamos con el Banco Digital de los Trabajadores. Si cobrás en
             otro banco, escribinos igual y te decimos con franqueza si podemos.

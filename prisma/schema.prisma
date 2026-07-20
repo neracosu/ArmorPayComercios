@@ -246,6 +246,45 @@ model PaymentClaim {
   @@index([bankTransactionId])
 }
 
+enum LeadEstado {
+  NUEVO
+  CONTACTADO
+  CONVERTIDO // ya tiene su Organization creada
+  DESCARTADO
+}
+
+/// Solicitud de propuesta que llega desde la portada pública.
+///
+/// NO lleva `organizationId` a propósito: cuando alguien la envía todavía no
+/// existe ningún comercio — precisamente eso es lo que viene a pedir. Es un
+/// modelo de plataforma, así que queda fuera del filtro de tenant y solo lo ve
+/// el `PLATFORM_ADMIN`.
+model Lead {
+  id             String     @id @default(cuid())
+  empresa        String
+  rif            String?
+  contacto       String
+  email          String
+  telefono       String?
+  cajas          Int?
+  sucursales     Int?
+  banco          String?
+  mensaje        String?    @db.Text
+  estado         LeadEstado @default(NUEVO)
+  notaInterna    String?    @db.Text
+  // Trazabilidad del alta: a qué comercio se convirtió y quién lo convirtió.
+  organizationId String?
+  convertidoPor  String?
+  convertidoAt   DateTime?
+  // Para limitar abuso del formulario público.
+  clientIp       String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([estado, createdAt])
+  @@index([clientIp, createdAt])
+}
+
 /// Config de plataforma (no de tenant). NO lleva organizationId a propósito.
 model PlatformSetting {
   key       String   @id
