@@ -23,6 +23,7 @@
     "react": "^18",
     "react-dom": "^18",
     "sonner": "^2.0.7",
+    "undici": "^7.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import CrearAdmin from "./CrearAdmin";
+import { FormularioLlave, FormularioCuenta } from "./LlaveYCuentas";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       users: { orderBy: { username: "asc" } },
       accounts: { orderBy: { accountNumber: "asc" } },
       branches: { orderBy: { name: "asc" } },
+      keyEvents: { orderBy: { createdAt: "desc" }, take: 10 },
     },
   });
   if (!comercio) notFound();
@@ -70,11 +72,36 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         {comercio.authKeyHint && (
           <p className="mt-1 font-mono text-sm text-tinta-tenue">{comercio.authKeyHint}</p>
         )}
+        {comercio.lastVerifiedAt && (
+          <p className="mt-1 text-sm text-tinta-tenue">
+            Última verificación: {new Date(comercio.lastVerifiedAt).toLocaleString("es-VE")}
+          </p>
+        )}
         <p className="mt-3 text-sm leading-relaxed text-tinta-tenue">
           El banco emite una llave por RIF, no por cuenta: este comercio usa la
-          misma para todas sus cuentas. Cargarla y probarla se hace desde acá —
-          pendiente de construir.
+          misma para todas sus cuentas, y rotarla las afecta a todas.
         </p>
+        <FormularioLlave
+          organizationId={comercio.id}
+          tieneLlave={comercio.authKeyStatus !== "SIN_LLAVE"}
+        />
+
+        {comercio.keyEvents.length > 0 && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium text-tinta-suave">
+              Historial de la llave ({comercio.keyEvents.length})
+            </summary>
+            <ul className="mt-2 space-y-1.5 text-sm text-tinta-tenue">
+              {comercio.keyEvents.map((e) => (
+                <li key={e.id}>
+                  <span className="text-tinta">{e.action}</span> ·{" "}
+                  {new Date(e.createdAt).toLocaleString("es-VE")}
+                  {e.detail ? ` · ${e.detail}` : ""}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
 
       {/* Cuentas */}
@@ -94,6 +121,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
             ))}
           </ul>
         )}
+        <FormularioCuenta organizationId={comercio.id} />
       </section>
 
       {/* Usuarios */}
