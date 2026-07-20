@@ -4,6 +4,35 @@
 
 **Plan maestro del producto**: `~/.claude/plans/moonlit-pondering-parasol.md`. Tiene fases, gates, riesgos y las decisiones ya cerradas. Leerlo antes de empezar cualquier tarea grande.
 
+**Repo**: `git@github.com:neracosu/ArmorPayComercios.git`, remote `origin` vía el alias SSH `github-armorpaycomercios` (clave dedicada `~/.ssh/id_ed25519_armorpaycomercios_github`, patrón del resto de los proyectos). Ojo con el nombre: el repo se llama **ArmorPayComercios** y el directorio local `armorpay-cloud` — es el mismo proyecto.
+
+## Estructura
+
+```
+armorpay-cloud/
+├── CLAUDE.md            ← este archivo
+├── prisma/              ← esquema + migraciones VERSIONADAS
+├── scripts/
+│   └── test-isolation.ts   ← obligatorio tras tocar el aislamiento
+├── src/                 ← el SaaS (puerto 3101, armorpay.net)
+│   ├── lib/             ← tenant-context.ts + prisma.ts = el núcleo
+│   └── app/
+└── gateway/             ← el gateway (puerto 3102) — proceso PM2 aparte
+```
+
+**Por qué el gateway vive acá y no en un repo propio**: comparte con el SaaS el contrato del evento bancario, así que un cambio se hace en un solo lugar y el compilador avisa. Son despliegues independientes, no un monolito.
+
+**Por qué el gateway NO vive en el proyecto viejo**: ese repo es el sistema que factura para Armor Market y no se le mete código nuevo.
+
+## Cómo hablan los dos sistemas
+
+Son dos saltos distintos, con acoplamientos distintos:
+
+1. **Gateway → base de `armorpay` (lectura directa, local).** Hace *tail* de `WebhookTransaction` por el índice `receivedAt`. NO se le agrega un endpoint al proyecto viejo: eso sería meter código en el proceso que factura. El acoplamiento de esquema es tolerable porque **la forma de esa tabla la dicta el banco**, no una decisión de producto nuestra: son los campos exactos de la notificación del BDT.
+2. **Gateway → `armorpay-cloud` (HTTP firmado con HMAC).** Este sí es un contrato de API versionado, y es la frontera que sobrevive si el SaaS se muda de servidor.
+
+El gateway **tiene que quedarse en este host para siempre**: la IP whitelisteada por el banco es la de este servidor. Por eso su lectura siempre es local, y por eso lo único que puede mudarse es el SaaS.
+
 ## Reglas que no se negocian
 
 1. **`armorpay.vipsoft.cloud` (el proyecto viejo, puerto 3100) NO cambia de comportamiento.** Es la operación que factura para Armor Market. Este proyecto se construye al lado; el gateway LEE de su base, nunca modifica su camino crítico.
