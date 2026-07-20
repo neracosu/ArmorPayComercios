@@ -26,9 +26,9 @@ import {
  */
 
 export const metadata = {
-  title: "ArmorPay — Validá el pago móvil antes de entregar la mercancía",
+  title: "ArmorPay — Valida el pago móvil antes de entregar la mercancía",
   description:
-    "Plataforma venezolana de validación de pago móvil. Confirmá contra el banco en segundos, con control por caja, turnos y cierre. No custodiamos fondos.",
+    "Plataforma venezolana de validación de pago móvil. Confirma contra el banco en segundos, con control por caja, turnos y cierre. No custodiamos fondos.",
 };
 
 const PARA_QUIEN = [
@@ -36,7 +36,7 @@ const PARA_QUIEN = [
     icono: Store,
     titulo: "Comercio de una o dos cajas",
     texto:
-      "Bodegón, farmacia, tienda de barrio. Dejás de recibir llamadas para confirmar pagos y de revisar el teléfono con el cliente esperando del otro lado del mostrador.",
+      "Bodegón, farmacia, tienda de barrio. Dejas de recibir llamadas para confirmar pagos y de revisar el teléfono con el cliente esperando del otro lado del mostrador.",
     puntos: [
       "Tu cajera confirma sin tu clave del banco",
       "Historial de lo cobrado",
@@ -47,7 +47,7 @@ const PARA_QUIEN = [
     icono: Building2,
     titulo: "Cadena con varias sucursales",
     texto:
-      "Acá es donde el resto de las herramientas se queda corto. Cada caja ve lo suyo, cada turno cierra con su comprobante, y vos ves todo consolidado sin pasar por el teléfono.",
+      "Acá es donde el resto de las herramientas se queda corto. Cada caja ve lo suyo, cada turno cierra con su comprobante, y tú ves todo consolidado sin pasar por el teléfono.",
     puntos: ["Aislamiento por caja y sucursal", "Turnos con cierre Z", "Alarma de doble cobro"],
   },
 ];
@@ -208,19 +208,19 @@ export default function Portada() {
       {/* ── El cuello de botella que nadie nombra ── */}
       <section className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
         <h2 className="max-w-2xl font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
-          Hoy, el único que puede confirmar un pago sos vos.
+          Hoy, el único que puede confirmar un pago eres tú.
         </h2>
         <div className="mt-6 grid max-w-3xl gap-4 leading-relaxed text-tinta-suave sm:grid-cols-2">
           <p>
-            Tu cajera no tiene acceso a la cuenta donde entra el dinero, y hacés
+            Tu cajera no tiene acceso a la cuenta donde entra el dinero, y haces
             bien: nadie le da la clave del banco a la caja. Entonces te llama, o
             le escribe al encargado, y el cliente espera parado mientras alguien
             revisa el teléfono.
           </p>
           <p>
             Multiplicalo por las veces que pasa en un día, y por cada sucursal.
-            El cuello de botella no es el banco: sos vos, atendiendo consultas
-            de pago mientras hacés otra cosa.
+            El cuello de botella no es el banco: eres tú, atendiendo consultas
+            de pago mientras haces otra cosa.
           </p>
         </div>
 
@@ -233,7 +233,7 @@ export default function Portada() {
           <p className="mt-4 max-w-2xl leading-relaxed text-tinta-suave">
             Ve exactamente una cosa: si ese pago entró o no. No ve tu saldo, no
             ve tus otros movimientos, no ve lo que cobraron las demás cajas. Y
-            vos ves todo, desde donde estés.
+            tú ves todo, desde donde estés.
           </p>
         </div>
       </section>
@@ -306,7 +306,7 @@ export default function Portada() {
           </p>
           <p className="leading-relaxed">
             No custodiamos fondos, no los movemos y no somos parte de la
-            transacción. Si mañana dejás de usarnos, tu plata siguió siempre en
+            transacción. Si mañana dejas de usarnos, tu plata siguió siempre en
             tu banco.
           </p>
         </div>
@@ -316,10 +316,10 @@ export default function Portada() {
       <section id="propuesta" className="border-t border-tinta-borde bg-tinta-fondo px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
-            Contanos cómo cobrás hoy
+            Cuéntanos cómo cobras hoy
           </h2>
           <p className="mt-4 leading-relaxed text-tinta-suave">
-            Cuántas cajas tenés, en qué banco cobrás y qué se te complica. Con
+            Cuántas cajas tienes, en qué banco cobras y qué se te complica. Con
             eso armamos una propuesta concreta, sin plantillas.
           </p>
           <Link
@@ -330,8 +330,8 @@ export default function Portada() {
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
           <p className="mt-4 text-sm text-tinta-tenue">
-            Hoy operamos con el Banco Digital de los Trabajadores. Si cobrás en
-            otro banco, escribinos igual y te decimos con franqueza si podemos.
+            Hoy operamos con el Banco Digital de los Trabajadores. Si cobras en
+            otro banco, escríbenos igual y te decimos con franqueza si podemos.
           </p>
         </div>
       </section>

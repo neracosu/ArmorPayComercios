@@ -40,7 +40,7 @@ export default async function ComerciosPage() {
     <main className="mx-auto max-w-4xl px-6 py-8">
       <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Comercios</h1>
       <p className="mt-1 text-sm text-tinta-tenue">
-        Todos los negocios de la plataforma. Entrá a uno para gestionar sus
+        Todos los negocios de la plataforma. Entra a uno para gestionar sus
         usuarios y su llave del banco.
       </p>
 

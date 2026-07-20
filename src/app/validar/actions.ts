@@ -21,7 +21,7 @@ export async function buscar(
   datos: FormData
 ): Promise<ResultadoBusqueda> {
   const session = await getVerifiedSession();
-  if (!session) return { ok: false, error: "Se cerró tu sesión. Entrá de nuevo." };
+  if (!session) return { ok: false, error: "Se cerró tu sesión. Entra de nuevo." };
 
   const parsed = sufijoSchema.safeParse(datos.get("referencia"));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
@@ -51,7 +51,7 @@ export async function cobrar(
   datos: FormData
 ): Promise<ResultadoCobro> {
   const session = await getVerifiedSession();
-  if (!session) return { ok: false, error: "Se cerró tu sesión. Entrá de nuevo." };
+  if (!session) return { ok: false, error: "Se cerró tu sesión. Entra de nuevo." };
 
   const pagoId = String(datos.get("pagoId") ?? "");
   const aceptaDuplicado = datos.get("aceptaDuplicado") === "1";
@@ -61,7 +61,7 @@ export async function cobrar(
   return withSessionTenant(session, async () => {
     const turno = await turnoAbierto(session.user.id);
     if (!turno) {
-      return { ok: false, error: "No tenés un turno abierto. Abrí turno antes de cobrar." };
+      return { ok: false, error: "No tienes un turno abierto. Abre turno antes de cobrar." };
     }
 
     const pago = await prisma.bankTransaction.findUnique({ where: { id: pagoId } });

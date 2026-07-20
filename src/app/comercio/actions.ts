@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
+import { puedeCrearCaja, puedeCrearSucursal } from "@/lib/limites";
 
 /**
  * Acciones del administrador del comercio.
@@ -30,10 +31,87 @@ function generarPassword(): string {
   return randomBytes(9).toString("base64url").replace(/[^a-zA-Z0-9]/g, "x");
 }
 
+const sucursalSchema = z.object({
+  nombre: z.string().trim().min(2, "Pon un nombre para la sucursal").max(80),
+  codigo: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{2,8}$/, "El código son 2 a 8 letras o números, sin espacios"),
+});
+
+/**
+ * Crea una sucursal.
+ *
+ * Las crea el comercio, no nosotros: es su organización interna. Nombre y
+ * código son únicos POR comercio, así que dos negocios distintos pueden tener
+ * cada uno su "Principal" sin pisarse.
+ */
+export async function crearSucursal(
+  _previo: ResultadoComercio | null,
+  datos: FormData
+): Promise<ResultadoComercio> {
+  const session = await exigirAdminComercio();
+
+  const parsed = sucursalSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  return withSessionTenant(session, async () => {
+    // Todo alta de sucursal pasa por acá: es donde va a enchufarse el plan.
+    const veredicto = await puedeCrearSucursal();
+    if (!veredicto.permitido) return { ok: false, error: veredicto.motivo! };
+
+    try {
+      await prisma.branch.create({
+        data: {
+          organizationId: session.user.organizationId!,
+          name: parsed.data.nombre,
+          code: parsed.data.codigo.toUpperCase(),
+        },
+      });
+    } catch (e) {
+      if ((e as { code?: string }).code === "P2002") {
+        return { ok: false, error: "Ya tienes una sucursal con ese nombre o ese código." };
+      }
+      throw e;
+    }
+
+    revalidatePath("/comercio/sucursales");
+    revalidatePath("/comercio/cajas");
+    return { ok: true, mensaje: `Sucursal ${parsed.data.nombre} creada.` };
+  });
+}
+
+/** Renombra una sucursal. El código no se toca: aparece en reportes ya emitidos. */
+export async function renombrarSucursal(
+  branchId: string,
+  nombre: string
+): Promise<ResultadoComercio> {
+  const session = await exigirAdminComercio();
+  const limpio = nombre.trim().slice(0, 80);
+  if (limpio.length < 2) return { ok: false, error: "El nombre es muy corto." };
+
+  return withSessionTenant(session, async () => {
+    const sucursal = await prisma.branch.findFirst({ where: { id: branchId } });
+    if (!sucursal) return { ok: false, error: "Esa sucursal no es de tu comercio." };
+
+    try {
+      await prisma.branch.update({ where: { id: sucursal.id }, data: { name: limpio } });
+    } catch (e) {
+      if ((e as { code?: string }).code === "P2002") {
+        return { ok: false, error: "Ya tienes otra sucursal con ese nombre." };
+      }
+      throw e;
+    }
+
+    revalidatePath("/comercio/sucursales");
+    return { ok: true, mensaje: "Sucursal renombrada." };
+  });
+}
+
 const cajaSchema = z.object({
   usuario: usernameSchema,
-  nombre: z.string().trim().min(2, "Poné un nombre para la caja").max(120),
-  branchId: z.string().min(1, "Elegí la sucursal"),
+  nombre: z.string().trim().min(2, "Pon un nombre para la caja").max(120),
+  branchId: z.string().min(1, "Elige la sucursal"),
 });
 
 /** Crea una caja. La contraseña se muestra una sola vez. */
@@ -50,6 +128,10 @@ export async function crearCaja(
   const password = generarPassword();
 
   return withSessionTenant(session, async () => {
+    // Todo alta de caja pasa por acá: es donde va a enchufarse el plan.
+    const veredicto = await puedeCrearCaja();
+    if (!veredicto.permitido) return { ok: false, error: veredicto.motivo! };
+
     // La sucursal se busca DENTRO del contexto: si el id fuera de otro
     // comercio, simplemente no aparece.
     const sucursal = await prisma.branch.findFirst({ where: { id: parsed.data.branchId } });

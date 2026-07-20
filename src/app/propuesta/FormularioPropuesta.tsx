@@ -40,7 +40,7 @@ export default function FormularioPropuesta() {
           Recibimos tu solicitud
         </h2>
         <p className="mt-2 leading-relaxed text-tinta-suave">
-          Te vamos a escribir al correo que dejaste para entender cómo cobrás
+          Te vamos a escribir al correo que dejaste para entender cómo cobras
           hoy y armarte una propuesta concreta.
         </p>
         <Link
@@ -99,7 +99,7 @@ export default function FormularioPropuesta() {
 
         <div>
           <label htmlFor="cajas" className={etiqueta}>
-            ¿Cuántas cajas tenés?
+            ¿Cuántas cajas tienes?
           </label>
           <input id="cajas" name="cajas" type="number" min={0} max={9999} className={campo} />
         </div>
@@ -113,7 +113,7 @@ export default function FormularioPropuesta() {
 
         <div className="sm:col-span-2">
           <label htmlFor="banco" className={etiqueta}>
-            ¿En qué banco cobrás?
+            ¿En qué banco cobras?
           </label>
           <input
             id="banco"
@@ -133,7 +133,7 @@ export default function FormularioPropuesta() {
             name="mensaje"
             rows={4}
             maxLength={2000}
-            placeholder="Contanos cómo verifican los pagos hoy y qué les cuesta más."
+            placeholder="Cuéntanos cómo verifican los pagos hoy y qué les cuesta más."
             className={campo}
           />
         </div>

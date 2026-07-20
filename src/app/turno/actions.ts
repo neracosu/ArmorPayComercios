@@ -20,7 +20,7 @@ export async function abrirTurno(
   datos: FormData
 ): Promise<ResultadoTurno> {
   const session = await getVerifiedSession();
-  if (!session) return { ok: false, error: "Se cerró tu sesión. Entrá de nuevo." };
+  if (!session) return { ok: false, error: "Se cerró tu sesión. Entra de nuevo." };
 
   const responsable = String(datos.get("responsable") ?? "").trim().slice(0, 120) || null;
 
@@ -30,7 +30,7 @@ export async function abrirTurno(
       select: { branchId: true, organizationId: true },
     });
     if (!caja?.branchId || !caja.organizationId) {
-      return { ok: false, error: "Tu usuario no tiene sucursal asignada. Avisale al administrador." };
+      return { ok: false, error: "Tu usuario no tiene sucursal asignada. Avísale al administrador." };
     }
 
     try {
@@ -52,7 +52,7 @@ export async function abrirTurno(
 
     revalidatePath("/turno");
     revalidatePath("/validar");
-    return { ok: true, mensaje: "Turno abierto. Ya podés cobrar." };
+    return { ok: true, mensaje: "Turno abierto. Ya puedes cobrar." };
   });
 }
 
@@ -68,13 +68,13 @@ export async function cerrarTurno(
   datos: FormData
 ): Promise<ResultadoTurno> {
   const session = await getVerifiedSession();
-  if (!session) return { ok: false, error: "Se cerró tu sesión. Entrá de nuevo." };
+  if (!session) return { ok: false, error: "Se cerró tu sesión. Entra de nuevo." };
 
   const nota = String(datos.get("nota") ?? "").trim().slice(0, 500) || null;
 
   return withSessionTenant(session, async () => {
     const turno = await turnoAbierto(session.user.id);
-    if (!turno) return { ok: false, error: "No tenés ningún turno abierto." };
+    if (!turno) return { ok: false, error: "No tienes ningún turno abierto." };
 
     const total = await prisma.paymentClaim.aggregate({
       where: { shiftId: turno.id },

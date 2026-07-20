@@ -95,7 +95,7 @@ export async function guardarLlave(
   });
 
   revalidatePath(`/plataforma/comercios/${organizationId}`);
-  return { ok: true, mensaje: "Llave guardada. Verificala contra el banco para confirmar que sirve." };
+  return { ok: true, mensaje: "Llave guardada. Verifícala contra el banco para confirmar que sirve." };
 }
 
 /**
@@ -149,7 +149,7 @@ export async function verificarLlave(organizationId: string): Promise<Resultado>
 const cuentaSchema = z.object({
   organizationId: z.string().min(1),
   accountNumber: z.string().trim().regex(/^\d{20}$/, "La cuenta son 20 dígitos, sin espacios"),
-  alias: z.string().trim().min(2, "Poné un alias").max(120),
+  alias: z.string().trim().min(2, "Pon un alias").max(120),
 });
 
 /** Da de alta una cuenta afiliada. Sin cuenta, las cajas del comercio no ven pagos. */
@@ -169,7 +169,7 @@ export async function agregarCuenta(
       error:
         existente.organizationId === organizationId
           ? "Esa cuenta ya está cargada en este comercio."
-          : "Esa cuenta ya pertenece a OTRO comercio. Revisá el número.",
+          : "Esa cuenta ya pertenece a OTRO comercio. Revisa el número.",
     };
   }
 

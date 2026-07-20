@@ -48,17 +48,17 @@ export default async function ValidarPage() {
           Cobrar un pago
         </h1>
         <p className="mt-1 text-sm text-tinta-tenue">
-          Pedile al cliente los últimos dígitos de la referencia.
+          Pídele al cliente los últimos dígitos de la referencia.
         </p>
 
         {!turno ? (
           <div className="mt-6 rounded-card border border-alerta/30 bg-alerta-suave p-5">
             <p className="flex items-center gap-2 font-medium text-alerta">
               <CircleDot className="h-4 w-4" aria-hidden />
-              No tenés turno abierto
+              No tienes turno abierto
             </p>
             <p className="mt-1 text-sm text-alerta">
-              Podés buscar pagos, pero para cobrarlos primero abrí tu turno.
+              Puedes buscar pagos, pero para cobrarlos primero abre tu turno.
             </p>
             <Link
               href="/turno"
@@ -70,7 +70,7 @@ export default async function ValidarPage() {
         ) : (
           cobrosDelTurno && (
             <p className="mt-4 text-sm text-tinta-tenue">
-              En este turno llevás <strong className="text-tinta">{cobrosDelTurno._count}</strong>{" "}
+              En este turno llevas <strong className="text-tinta">{cobrosDelTurno._count}</strong>{" "}
               cobro(s) por{" "}
               <strong className="text-tinta">
                 Bs{" "}

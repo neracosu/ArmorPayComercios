@@ -21,7 +21,7 @@ export default async function LoginPage() {
             Validación de pagos
           </h1>
           <p className="mt-2 text-sm text-tinta-tenue">
-            Confirmá en segundos que el pago llegó a tu cuenta.
+            Confirma en segundos que el pago llegó a tu cuenta.
           </p>
         </div>
 
@@ -32,7 +32,7 @@ export default async function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-tinta-tenue">
-          ¿Problemas para entrar? Pedile a tu administrador que revise tu usuario.
+          ¿Problemas para entrar? Pídele a tu administrador que revise tu usuario.
         </p>
       </div>
     </main>

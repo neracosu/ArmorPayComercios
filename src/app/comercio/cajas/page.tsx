@@ -44,7 +44,7 @@ export default async function CajasPage() {
       <main className="mx-auto max-w-3xl px-6 py-8">
         <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Cajas</h1>
         <p className="mb-6 mt-1 text-sm text-tinta-tenue">
-          Las cajas de tu negocio. Vos las creás y las administrás; nosotros no
+          Las cajas de tu negocio. Tú las creas y las administrás; nosotros no
           tocamos nada de acá.
         </p>
         <GestionCajas

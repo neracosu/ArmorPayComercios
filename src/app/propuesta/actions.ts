@@ -17,9 +17,9 @@ import { prisma } from "@/lib/prisma";
 const leadDb = new PrismaClient();
 
 const schema = z.object({
-  empresa: z.string().trim().min(2, "Poné el nombre de tu empresa").max(120),
-  contacto: z.string().trim().min(2, "Poné tu nombre").max(120),
-  email: z.string().trim().email("Revisá el correo").max(160),
+  empresa: z.string().trim().min(2, "Pon el nombre de tu empresa").max(120),
+  contacto: z.string().trim().min(2, "Pon tu nombre").max(120),
+  email: z.string().trim().email("Revisa el correo").max(160),
   telefono: z.string().trim().max(40).optional().or(z.literal("")),
   rif: z.string().trim().max(20).optional().or(z.literal("")),
   cajas: z.coerce.number().int().min(0).max(9999).optional(),
@@ -56,7 +56,7 @@ export async function enviarSolicitud(
   if (recientes >= MAX_POR_IP_POR_HORA) {
     return {
       ok: false,
-      error: "Ya recibimos varias solicitudes desde acá. Escribinos por correo si es urgente.",
+      error: "Ya recibimos varias solicitudes desde acá. Escríbenos por correo si es urgente.",
     };
   }
 

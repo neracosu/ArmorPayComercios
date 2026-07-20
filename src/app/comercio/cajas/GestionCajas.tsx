@@ -15,7 +15,7 @@ function Credenciales({ usuario, password }: { usuario: string; password: string
   return (
     <div className="mt-3 rounded-control border border-tinta-borde bg-white p-3">
       <p className="text-xs font-medium uppercase tracking-wider text-tinta-tenue">
-        Anotala ahora — se muestra una sola vez
+        Anótala ahora — se muestra una sola vez
       </p>
       <p className="mt-2 font-mono text-sm">
         Usuario: <strong>{usuario}</strong>

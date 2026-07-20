@@ -4,7 +4,7 @@ import FormularioPropuesta from "./FormularioPropuesta";
 export const metadata = {
   title: "Pedir una propuesta — ArmorPay",
   description:
-    "Contanos cuántas cajas tenés y en qué banco cobrás, y armamos una propuesta concreta.",
+    "Cuéntanos cuántas cajas tienes y en qué banco cobras, y armamos una propuesta concreta.",
 };
 
 export default function PropuestaPage() {
@@ -26,11 +26,11 @@ export default function PropuestaPage() {
 
       <main className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
         <h1 className="font-display text-3xl font-bold tracking-tight text-tinta sm:text-4xl">
-          Contanos cómo cobrás hoy
+          Cuéntanos cómo cobras hoy
         </h1>
         <p className="mt-4 max-w-xl leading-relaxed text-tinta-suave">
           Con estos datos armamos una propuesta concreta, no una plantilla. Si
-          por lo que nos contás todavía no podemos ayudarte, te lo decimos.
+          por lo que nos cuentas todavía no podemos ayudarte, te lo decimos.
         </p>
 
         <div className="mt-9">

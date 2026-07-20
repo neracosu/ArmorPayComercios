@@ -79,10 +79,10 @@ export default async function TurnoPage() {
         ) : (
           <div className="mt-6 rounded-card border border-tinta-borde bg-white p-6">
             <h2 className="font-display font-bold tracking-tight text-tinta">
-              No tenés turno abierto
+              No tienes turno abierto
             </h2>
             <p className="mb-5 mt-1 text-sm text-tinta-tenue">
-              Abrí tu turno para poder registrar cobros.
+              Abre tu turno para poder registrar cobros.
             </p>
             <AbrirTurno />
           </div>

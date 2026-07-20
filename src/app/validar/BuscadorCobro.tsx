@@ -180,8 +180,8 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
         <div className="mt-6 rounded-card border border-dashed border-tinta-borde bg-white p-8 text-center">
           <p className="font-medium text-tinta">No aparece ningún pago con esos dígitos</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
-            Puede que el banco todavía no lo haya reportado. Esperá unos segundos
-            y volvé a buscar. Si sigue sin aparecer, el pago no entró a la cuenta.
+            Puede que el banco todavía no lo haya reportado. Espera unos segundos
+            y vuelve a buscar. Si sigue sin aparecer, el pago no entró a la cuenta.
           </p>
         </div>
       )}

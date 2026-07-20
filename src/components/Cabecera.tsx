@@ -66,6 +66,13 @@ export default function Cabecera({
                 <Users className="h-4 w-4" aria-hidden />
                 Cajas
               </Link>
+              <Link
+                href="/comercio/sucursales"
+                className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                <Store className="h-4 w-4" aria-hidden />
+                Sucursales
+              </Link>
             </>
           )}
           <span className="hidden px-2 text-sm text-tinta-tenue sm:inline">{usuario}</span>
