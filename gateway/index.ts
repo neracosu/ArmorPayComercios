@@ -28,6 +28,7 @@ const POLL_MS = Number(process.env.GATEWAY_POLL_MS ?? 15_000);
 const OVERLAP_MS = Number(process.env.GATEWAY_OVERLAP_MS ?? 120_000);
 const CURSOR_KEY = "gateway.cursor";
 const ALERT_TO = process.env.ALERT_EMAIL ?? "neracosu@gmail.com";
+const ALERT_FROM = process.env.ALERT_FROM ?? "alertas@vipsoft.cloud";
 /** Ciclos fallidos seguidos antes de avisar por correo. */
 const FAILURES_BEFORE_ALERT = 4;
 
@@ -42,8 +43,12 @@ function log(msg: string) {
 
 function sendMail(subject: string, body: string) {
   try {
-    execFileSync("/usr/sbin/sendmail", ["-t"], {
-      input: `To: ${ALERT_TO}\nSubject: ${subject}\n\n${body}\n`,
+    // `-f` fija el remitente de SOBRE. Sin esto sale como
+    // mardenli@<hostname>.contaboserver.net, dominio sin SPF, y Gmail rechaza
+    // con 550-5.7.26 "sender unauthenticated" — el correo NUNCA llega.
+    // `vipsoft.cloud` sí tiene SPF y DKIM; los subdominios no, y no se hereda.
+    execFileSync("/usr/sbin/sendmail", ["-t", "-f", ALERT_FROM], {
+      input: `To: ${ALERT_TO}\nFrom: ArmorPay Alertas <${ALERT_FROM}>\nSubject: ${subject}\n\n${body}\n`,
     });
   } catch (e) {
     log(`no se pudo enviar el correo de alerta: ${(e as Error).message}`);
