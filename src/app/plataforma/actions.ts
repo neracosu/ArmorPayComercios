@@ -47,6 +47,74 @@ export async function cambiarEstadoLead(
   return { ok: true, mensaje: `Solicitud marcada como ${estado.toLowerCase()}.` };
 }
 
+const usuarioComercioSchema = z.object({
+  organizationId: z.string().min(1),
+  usuario: usernameSchema,
+  nombre: z.string().trim().min(2, "Falta el nombre").max(120),
+});
+
+/**
+ * Crea el usuario administrador de un comercio.
+ *
+ * Es la única vía para que exista un `ORG_ADMIN`: el dueño del negocio no se
+ * autocrea. Desde ahí, él arma sus propias cajas sin que nosotros
+ * intervengamos.
+ */
+export async function crearAdminComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const parsed = usuarioComercioSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const usuario = normalizeUsername(parsed.data.usuario);
+  if (await db.user.findUnique({ where: { username: usuario } })) {
+    return { ok: false, error: `El usuario "${usuario}" ya existe.` };
+  }
+
+  const branch = await db.branch.findFirst({
+    where: { organizationId: parsed.data.organizationId },
+  });
+  const password = generarPassword();
+
+  await db.user.create({
+    data: {
+      username: usuario,
+      name: parsed.data.nombre,
+      passwordHash: await bcrypt.hash(password, 12),
+      role: "ORG_ADMIN",
+      organizationId: parsed.data.organizationId,
+      branchId: branch?.id ?? null,
+    },
+  });
+
+  revalidatePath(`/plataforma/comercios/${parsed.data.organizationId}`);
+  return {
+    ok: true,
+    mensaje: "Administrador creado.",
+    credenciales: { usuario, password },
+  };
+}
+
+/** Suspende o reactiva un comercio. Suspendido, ninguno de sus usuarios entra. */
+export async function cambiarEstadoComercio(
+  organizationId: string,
+  suspender: boolean
+): Promise<Resultado> {
+  await exigirPlataforma();
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { status: suspender ? "SUSPENDIDA" : "ACTIVA" },
+  });
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return {
+    ok: true,
+    mensaje: suspender ? "Comercio suspendido." : "Comercio reactivado.",
+  };
+}
+
 const convertirSchema = z.object({
   leadId: z.string().min(1),
   razonSocial: z.string().trim().min(2, "Falta la razón social").max(160),

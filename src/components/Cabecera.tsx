@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot, Search, Store } from "lucide-react";
+import { CircleDot, Search, Store, Users } from "lucide-react";
 import CerrarSesion from "./CerrarSesion";
 
 /**
@@ -12,10 +12,12 @@ export default function Cabecera({
   comercio,
   usuario,
   turnoAbierto,
+  esAdminComercio = false,
 }: {
   comercio: string;
   usuario: string;
   turnoAbierto: boolean;
+  esAdminComercio?: boolean;
 }) {
   return (
     <header className="border-b border-tinta-borde bg-white">
@@ -48,6 +50,15 @@ export default function Cabecera({
             />
             {turnoAbierto ? "Turno abierto" : "Sin turno"}
           </Link>
+          {esAdminComercio && (
+            <Link
+              href="/comercio/cajas"
+              className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+            >
+              <Users className="h-4 w-4" aria-hidden />
+              Cajas
+            </Link>
+          )}
           <span className="hidden px-2 text-sm text-tinta-tenue sm:inline">{usuario}</span>
           <CerrarSesion />
         </nav>

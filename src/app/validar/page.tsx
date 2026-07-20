@@ -40,6 +40,7 @@ export default async function ValidarPage() {
         comercio={comercio?.razonSocial ?? "—"}
         usuario={session.user.name}
         turnoAbierto={Boolean(turno)}
+        esAdminComercio={session.user.role === "ORG_ADMIN"}
       />
 
       <main className="mx-auto max-w-3xl px-6 py-8">
