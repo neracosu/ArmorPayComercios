@@ -4,7 +4,7 @@
 
 **Plan maestro del producto**: `~/.claude/plans/moonlit-pondering-parasol.md`. Tiene fases, gates, riesgos y las decisiones ya cerradas. Leerlo antes de empezar cualquier tarea grande.
 
-**Repo**: `git@github.com:neracosu/ArmorPayComercios.git`, remote `origin` vía el alias SSH `github-armorpaycomercios` (clave dedicada `~/.ssh/id_ed25519_armorpaycomercios_github`, patrón del resto de los proyectos). Ojo con el nombre: el repo se llama **ArmorPayComercios** y el directorio local `armorpay-cloud` — es el mismo proyecto.
+**Repo**: `git@github.com:neracosu/ArmorPayComercios.git`, rama `main`, remote `origin` vía el alias SSH `github-armorpaycomercios`. Reusa `~/.ssh/id_ed25519_armorpay_github`, que está registrada **a nivel de cuenta** en GitHub y por eso sirve para todos los repos de `neracosu` (no es una deploy key). Ojo con el nombre: el repo se llama **ArmorPayComercios** y el directorio local `armorpay-cloud` — es el mismo proyecto.
 
 ## Estructura
 
