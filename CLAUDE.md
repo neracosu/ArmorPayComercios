@@ -43,7 +43,7 @@ El gateway **tiene que quedarse en este host para siempre**: la IP whitelisteada
 ## Stack
 
 - Next.js 14.2.35 (App Router) + React 18 + TypeScript
-- Prisma 6 (pinneado; Prisma 7 rompe) + MariaDB `mardenli_apcloud` (+ `mardenli_apcloudsh` de shadow)
+- Prisma 6 (pinneado; Prisma 7 rompe) + MariaDB `mardenli_armorpaycomercios` (+ `mardenli_apcshadow` de shadow, solo para `migrate dev`)
 - NextAuth 4 (Credentials JWT), Tailwind 3, zod (`safeParse`)
 - **Migraciones versionadas** (`prisma migrate deploy`), NO `db push`. El proyecto viejo usa `db push` por historia; este no hereda esa deuda: `db push` infiere el diff, puede descartar columnas sin preguntar y no deja historial ni rollback.
 
