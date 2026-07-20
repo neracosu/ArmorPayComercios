@@ -2,8 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Los montos no deben "bailar" entre filas: la cajera tiene que leerlos de un
-   vistazo. Ver la dirección de diseño en el plan del proyecto. */
-.tabular {
-  font-variant-numeric: tabular-nums;
+@layer base {
+  /* Los montos y las referencias no deben "bailar" entre filas: la cajera los
+     lee de un vistazo, no los deletrea. Cifras tabulares en todo el panel. */
+  body {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco siempre visible: en una caja se navega mucho con teclado. */
+  :focus-visible {
+    outline: 2px solid theme("colors.marca.600");
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Monto: el dato que se lee primero. Grande, tabular, sin adornos. */
+  .monto {
+    @apply text-3xl font-semibold tracking-tight text-tinta;
+  }
+
+  /* Estado: NUNCA solo color. Siempre ícono + texto + color, porque el color
+     solo falla con daltonismo, con brillo bajo y con prisa. */
+  .estado {
+    @apply inline-flex items-center gap-1.5 rounded-control px-2.5 py-1 text-sm font-medium;
+  }
 }
