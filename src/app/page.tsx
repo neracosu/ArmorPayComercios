@@ -23,9 +23,9 @@ import {
  * una captura y la cajera tiene que decidir si entrega la mercancía. Todo lo
  * demás en esta página cuelga de ese momento.
  *
- * Regla de contenido: NADA inventado. Sin testimonios, sin logos de clientes,
- * sin cantidad de comercios, sin precios — el segmento y el tarifario todavía
- * no están decididos. Lo único que se afirma es lo que se puede sostener.
+ * Regla de contenido: NADA inventado. Sin testimonios ni logos de clientes
+ * mientras no existan comercios activos que lo autoricen; las capturas son del
+ * producto real. Lo único que se afirma es lo que se puede sostener.
  *
  * Posicionamiento: "plataforma de validación de pagos", nunca "pasarela" ni
  * "gateway" — el regulador usa esa palabra para una categoría con obligaciones.
@@ -95,6 +95,12 @@ export default function Portada() {
             >
               Precios
             </a>
+            <Link
+              href="/docs/api"
+              className="rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
+            >
+              API
+            </Link>
             <Link
               href="/login"
               className="rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
@@ -576,7 +582,19 @@ export default function Portada() {
       </section>
 
       <footer className="border-t border-tinta-borde px-6 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-sm text-tinta-tenue sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto max-w-5xl">
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="Enlaces del pie">
+            <Link href="/registro" className="text-tinta-suave hover:text-tinta">Crear cuenta</Link>
+            <Link href="/propuesta" className="text-tinta-suave hover:text-tinta">Pedir una propuesta</Link>
+            <Link href="/docs/api" className="text-tinta-suave hover:text-tinta">Documentación de la API</Link>
+            <Link href="/login" className="text-tinta-suave hover:text-tinta">Entrar</Link>
+          </nav>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-tinta-tenue">
+            Nunca custodiamos ni movemos fondos: el dinero va directo del que
+            paga a la cuenta bancaria de tu empresa. Nosotros solo confirmamos.
+          </p>
+        </div>
+        <div className="mx-auto mt-6 flex max-w-5xl flex-col gap-3 border-t border-tinta-borde pt-6 text-sm text-tinta-tenue sm:flex-row sm:items-center sm:justify-between">
           <div>
             <span className="font-display font-bold text-tinta">ArmorPay</span>
             <span className="ml-2">Plataforma de validación de pagos · Venezuela</span>
