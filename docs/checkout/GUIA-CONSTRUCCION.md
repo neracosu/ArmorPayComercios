@@ -40,7 +40,9 @@ Decisiones ya tomadas (no re-litigar): la ejecución bancaria va **por el gatewa
 
 ---
 
-## FASE 0 — Contrato v2 del gateway: el campo `banco` (prerequisito, ~medio día)
+## FASE 0 — Contrato v2 del gateway: el campo `banco` ✅ HECHA (2026-08-06, commit `5ff48dc`)
+
+> Ejecutada tal como estaba escrita, mismo día. Migración `20260806162641_banco_receptor` (backfill por default: las 447 filas preexistentes eran BDT), test-isolation 11/11, desplegada con 0 turnos abiertos y verificada: 5 ciclos del gateway sin error, eventos BT siguen cayendo en `sinComercio`. Extra: comentario de `Lead` en el schema corregido (limpieza barata №1).
 
 **Por qué primero**: `WebhookTransaction` del interno tiene columna `banco` ("BDT"|"BT") desde 2026-07-29 y el webhook BT escribe `tipo:"CREDITO"` → el gateway YA lee y reenvía filas BT, pero ni el SELECT ni el contrato llevan `banco`: si hoy se afilia un comercio BT, sus pagos se escribirían indistinguibles de BDT. El checkout valida en ambos bancos, así que esto va antes que todo.
 

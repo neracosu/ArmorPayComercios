@@ -57,7 +57,7 @@ Las tres guías están escritas desde el lado **consumidor**: proyectos que le p
 
 ## Primeros trabajos en este repo (orden sugerido)
 
-1. **Contrato v2 del gateway con campo `banco`** (`gateway/source.ts` + `contract.ts` + `/api/ingest/bdt`): sin esto el SaaS no distingue BDT de BT. Cambio chico y autocontenido — buen primer paso.
+1. ✅ **Contrato v2 del gateway con campo `banco` — HECHO (2026-08-06, Fase 0, commit `5ff48dc`)**: `banco` viaja end-to-end (source → contrato aditivo `version: 1` → ingesta con default → columnas en `BankTransaction`/`BankAccount` → chip en caja). Migración `20260806162641_banco_receptor`, test-isolation 11/11, desplegado y verificado en producción el mismo día.
 2. **Diseño de la pata saliente del gateway** (decisión ya tomada: C2P y validación online para comercios se ejecutan desde el gateway, mismo servidor whitelisteado). Los moldes de clientes bancarios están en el repo interno: `src/lib/bdt-client.ts` (undici + TLS específico), `src/lib/bt-client.ts` y `src/app/api/bank/c2p/route.ts` — leerlos como referencia y portarlos; NO crear dependencia runtime hacia armorpay.
 3. **Contrato de la API de checkout** (API keys por comercio, idempotency keys, webhooks de confirmación al comercio, y las superficies embed/plugin) — con las guías de esta carpeta como base.
 
