@@ -31,6 +31,7 @@ interface Props {
   comercio: {
     razonSocial: string;
     rif: string;
+    logoUrl: string | null;
     cuentas: Array<{ banco: string; cuenta: string }>;
   };
   c2pDisponible: boolean;
@@ -400,13 +401,25 @@ export default function PagoPublico({ intent, comercio, c2pDisponible, bancosC2p
           <>
             {/* El ticket: quién cobra y el monto exacto. */}
             <div className="px-6 pt-6">
-              <p className="text-xs font-medium uppercase tracking-widest text-tinta-tenue">
-                Estás pagando a
-              </p>
-              <h1 className="mt-1 font-display text-xl font-bold tracking-tight text-tinta">
-                {comercio.razonSocial}
-              </h1>
-              <p className="text-sm text-tinta-tenue">RIF {comercio.rif}</p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest text-tinta-tenue">
+                    Estás pagando a
+                  </p>
+                  <h1 className="mt-1 font-display text-xl font-bold tracking-tight text-tinta">
+                    {comercio.razonSocial}
+                  </h1>
+                  <p className="text-sm text-tinta-tenue">RIF {comercio.rif}</p>
+                </div>
+                {comercio.logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- nuestra propia ruta, tamaño fijo
+                  <img
+                    src={comercio.logoUrl}
+                    alt={`Logo de ${comercio.razonSocial}`}
+                    className="h-14 w-14 shrink-0 rounded-card object-contain"
+                  />
+                )}
+              </div>
 
               <div className="mt-5 flex items-end justify-between gap-3">
                 <div>

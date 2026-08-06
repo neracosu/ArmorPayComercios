@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot, ClipboardList, KeyRound, Search, Store, Users } from "lucide-react";
+import { CircleDot, ClipboardList, Image as ImageIcon, KeyRound, Search, Store, Users } from "lucide-react";
 import CerrarSesion from "./CerrarSesion";
 
 /**
@@ -13,11 +13,14 @@ export default function Cabecera({
   usuario,
   turnoAbierto,
   esAdminComercio = false,
+  logoUrl = null,
 }: {
   comercio: string;
   usuario: string;
   turnoAbierto: boolean;
   esAdminComercio?: boolean;
+  /** Logo del comercio (`/api/logo/...`), o null si no cargó ninguno. */
+  logoUrl?: string | null;
 }) {
   return (
     <header className="border-b border-tinta-borde bg-white">
@@ -26,8 +29,17 @@ export default function Cabecera({
           <span className="font-display text-base font-bold tracking-tight text-tinta">
             Armor<span className="text-marca-700">Pay</span>
           </span>
-          <span className="flex items-center gap-1 text-sm text-tinta-tenue">
-            <Store className="h-3.5 w-3.5" aria-hidden />
+          <span className="flex items-center gap-1.5 text-sm text-tinta-tenue">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- viene de nuestra propia ruta, tamaño fijo
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-6 w-6 rounded object-contain"
+              />
+            ) : (
+              <Store className="h-3.5 w-3.5" aria-hidden />
+            )}
             {comercio}
           </span>
         </div>
@@ -79,6 +91,13 @@ export default function Cabecera({
               >
                 <KeyRound className="h-4 w-4" aria-hidden />
                 API
+              </Link>
+              <Link
+                href="/comercio/perfil"
+                className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                <ImageIcon className="h-4 w-4" aria-hidden />
+                Perfil
               </Link>
             </>
           )}

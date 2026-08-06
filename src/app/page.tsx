@@ -419,6 +419,11 @@ export default function Portada() {
             Hoy operamos con el Banco Digital de los Trabajadores. Si cobras en
             otro banco, escríbenos igual y te decimos con franqueza si podemos.
           </p>
+          <p className="mt-2 text-sm text-tinta-tenue">
+            El servicio es para <strong className="font-medium text-tinta-suave">personas
+            jurídicas</strong> (RIF J o G) con cuenta bancaria a nombre de la
+            empresa — no funciona con cuentas personales.
+          </p>
         </div>
       </section>
 

@@ -4,6 +4,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { inicioDelDia } from "@/lib/operacion";
 import Cabecera from "@/components/Cabecera";
+import { logoUrlDe } from "@/lib/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function CierresPage() {
     const [comercio, hoy, turnos, duplicados] = await Promise.all([
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
-        select: { razonSocial: true },
+        select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
       }),
       prisma.paymentClaim.aggregate({
         where: { claimedAt: { gte: desde } },
@@ -67,6 +68,7 @@ export default async function CierresPage() {
     <>
       <Cabecera
         comercio={comercio?.razonSocial ?? "—"}
+        logoUrl={logoUrlDe(comercio)}
         usuario={session.user.name}
         turnoAbierto={false}
         esAdminComercio

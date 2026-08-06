@@ -21,7 +21,18 @@ const schema = z.object({
   contacto: z.string().trim().min(2, "Pon tu nombre").max(120),
   email: z.string().trim().email("Revisa el correo").max(160),
   telefono: z.string().trim().max(40).optional().or(z.literal("")),
-  rif: z.string().trim().max(20).optional().or(z.literal("")),
+  // Solo personas jurídicas: el servicio valida pagos de cuentas de EMPRESA.
+  // Un RIF V/E (persona natural) se rechaza acá, con explicación, antes de
+  // que alguien avance creyendo que califica.
+  rif: z
+    .string()
+    .trim()
+    .min(5, "Pon el RIF de tu empresa")
+    .max(20)
+    .refine(
+      (v) => /^[JG]/i.test(v.replace(/[^A-Za-z0-9]/g, "")),
+      "Trabajamos con personas jurídicas: el RIF debe empezar con J o G. Si tienes firma personal, escríbenos igual por el mensaje y te orientamos."
+    ),
   cajas: z.coerce.number().int().min(0).max(9999).optional(),
   sucursales: z.coerce.number().int().min(0).max(999).optional(),
   banco: z.string().trim().max(80).optional().or(z.literal("")),

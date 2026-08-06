@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
+import { logoUrlDe } from "@/lib/logo";
 import GestionApiKeys from "./GestionApiKeys";
 import GestionWebhooks from "./GestionWebhooks";
 
@@ -31,7 +32,7 @@ export default async function ApiPage() {
       }),
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
-        select: { razonSocial: true },
+        select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
       }),
     ]);
     return { llaves, endpoints, comercio };
@@ -41,6 +42,7 @@ export default async function ApiPage() {
     <>
       <Cabecera
         comercio={comercio?.razonSocial ?? "—"}
+        logoUrl={logoUrlDe(comercio)}
         usuario={session.user.name}
         turnoAbierto={false}
         esAdminComercio

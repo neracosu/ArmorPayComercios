@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { runAsPlatform } from "@/lib/tenant-context";
 import { intentPublico } from "@/lib/checkout";
 import { execC2pBancos } from "@/lib/exec-client";
+import { logoUrlDe } from "@/lib/logo";
 import PagoPublico from "./PagoPublico";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,15 @@ export default async function PayPage({ params }: { params: { id: string } }) {
     const [org, cuentas] = await Promise.all([
       prisma.organization.findUnique({
         where: { id: intent.organizationId },
-        select: { razonSocial: true, rif: true, btC2pEnabled: true, btCodAfiliado: true },
+        select: {
+          id: true,
+          razonSocial: true,
+          rif: true,
+          btC2pEnabled: true,
+          btCodAfiliado: true,
+          logoMime: true,
+          logoUpdatedAt: true,
+        },
       }),
       prisma.bankAccount.findMany({
         where: { organizationId: intent.organizationId, isActive: true },
@@ -77,6 +86,7 @@ export default async function PayPage({ params }: { params: { id: string } }) {
       comercio={{
         razonSocial: data.org.razonSocial,
         rif: data.org.rif,
+        logoUrl: logoUrlDe(data.org),
         cuentas: data.cuentas.map((c) => ({
           banco: c.banco,
           // La cuenta se muestra como en un ticket: primeros 4 + últimos 4.

@@ -78,9 +78,20 @@ export default function FormularioPropuesta() {
 
         <div>
           <label htmlFor="rif" className={etiqueta}>
-            RIF <span className="font-normal text-tinta-tenue">(opcional)</span>
+            RIF de la empresa
           </label>
-          <input id="rif" name="rif" maxLength={20} placeholder="J-12345678-9" className={campo} />
+          <input
+            id="rif"
+            name="rif"
+            required
+            maxLength={20}
+            placeholder="J-12345678-9"
+            className={campo}
+          />
+          <p className="mt-1 text-xs text-tinta-tenue">
+            De persona jurídica (empieza con J o G). El servicio funciona con
+            cuentas bancarias de empresa.
+          </p>
         </div>
 
         <div>

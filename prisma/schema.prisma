@@ -73,6 +73,14 @@ model Organization {
   btCodAfiliado String?
   btC2pEnabled  Boolean @default(false)
 
+  // Logo del comercio: la cara de su marca en el panel de cajas y en /pay.
+  // Vive EN la base (no en disco) para que el backup de la base se lleve todo.
+  // Solo raster (png/jpg/webp, verificado por bytes mágicos): un SVG puede
+  // llevar scripts y se serviría desde nuestro dominio. ≤512 KB.
+  logo          Bytes?    @db.MediumBlob
+  logoMime      String?
+  logoUpdatedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

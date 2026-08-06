@@ -33,6 +33,24 @@ export default function PropuestaPage() {
           por lo que nos cuentas todavía no podemos ayudarte, te lo decimos.
         </p>
 
+        <div className="mt-6 max-w-xl rounded-card border border-tinta-borde bg-tinta-fondo/60 p-5">
+          <p className="text-sm font-medium text-tinta">Antes de escribirnos, verifica que cumples esto:</p>
+          <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-tinta-suave">
+            <li>
+              · Tu negocio es una <strong>persona jurídica</strong> (RIF J o G).
+              El servicio no funciona con cuentas personales.
+            </li>
+            <li>
+              · Cobras (o vas a cobrar) en una <strong>cuenta bancaria a nombre
+              de la empresa</strong> en un banco que soportamos.
+            </li>
+            <li>
+              · Puedes tramitar con tu banco la afiliación de pago móvil
+              empresarial — te acompañamos en ese paso.
+            </li>
+          </ul>
+        </div>
+
         <div className="mt-9">
           <FormularioPropuesta />
         </div>

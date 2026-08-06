@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
+import { logoUrlDe } from "@/lib/logo";
 import GestionCajas from "./GestionCajas";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function CajasPage() {
       prisma.branch.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
-        select: { razonSocial: true },
+        select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
       }),
     ]);
     return { cajas, sucursales, comercio };
@@ -37,6 +38,7 @@ export default async function CajasPage() {
     <>
       <Cabecera
         comercio={comercio?.razonSocial ?? "—"}
+        logoUrl={logoUrlDe(comercio)}
         usuario={session.user.name}
         turnoAbierto={false}
         esAdminComercio

@@ -5,6 +5,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { turnoAbierto } from "@/lib/operacion";
 import Cabecera from "@/components/Cabecera";
+import { logoUrlDe } from "@/lib/logo";
 import BuscadorCobro from "./BuscadorCobro";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function ValidarPage() {
       session.user.organizationId
         ? prisma.organization.findUnique({
             where: { id: session.user.organizationId },
-            select: { razonSocial: true },
+            select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
           })
         : null,
       turno
@@ -38,6 +39,7 @@ export default async function ValidarPage() {
     <>
       <Cabecera
         comercio={comercio?.razonSocial ?? "—"}
+        logoUrl={logoUrlDe(comercio)}
         usuario={session.user.name}
         turnoAbierto={Boolean(turno)}
         esAdminComercio={session.user.role === "ORG_ADMIN"}

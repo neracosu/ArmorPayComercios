@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, KeyRound, Zap } from "lucide-react";
+import { logoUrlDe } from "@/lib/logo";
 import CrearAdmin from "./CrearAdmin";
 import { FormularioLlave, FormularioCuenta } from "./LlaveYCuentas";
+import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +104,32 @@ export default async function ComercioPage({ params }: { params: { id: string } 
             </ul>
           </details>
         )}
+      </section>
+
+      {/* Afiliación C2P: el segundo método de cobro del checkout */}
+      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
+          <Zap className="h-4 w-4 text-marca-700" aria-hidden />
+          C2P del Tesoro (Botón de Pago)
+        </h2>
+        <p className={`mt-2 text-sm font-medium ${comercio.btC2pEnabled ? "text-ok" : "text-tinta-tenue"}`}>
+          {comercio.btC2pEnabled
+            ? `Habilitado · afiliado ${comercio.btCodAfiliado}`
+            : comercio.btCodAfiliado
+              ? `Afiliado ${comercio.btCodAfiliado} · apagado`
+              : "Sin afiliación cargada"}
+        </p>
+        <FormularioC2p
+          organizationId={comercio.id}
+          codAfiliado={comercio.btCodAfiliado}
+          habilitado={comercio.btC2pEnabled}
+        />
+      </section>
+
+      {/* Logo: su marca en las cajas y en la página de pago */}
+      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="font-display font-bold tracking-tight text-tinta">Logo</h2>
+        <FormularioLogo organizationId={comercio.id} logoUrl={logoUrlDe(comercio)} />
       </section>
 
       {/* Cuentas */}

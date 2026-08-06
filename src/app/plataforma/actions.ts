@@ -8,6 +8,7 @@ import { getVerifiedSession } from "@/lib/session-guard";
 import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
+import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
 
 /**
@@ -323,4 +324,78 @@ export async function convertirLead(
     mensaje: `${org.razonSocial} quedó creado. Falta afiliar su cuenta ante el banco y cargarle la Llave de Trabajo.`,
     credenciales: { usuario, password },
   };
+}
+
+// ── Afiliación C2P del Tesoro (Botón de Pago) ───────────────────────────────
+
+/**
+ * Guarda la identidad C2P de un comercio: su código de afiliado ante el
+ * Tesoro. El código NO es un secreto (la identidad es codAfiliado + RIF y el
+ * servicio no usa auth), pero SÍ es el gate operativo: `btC2pEnabled` solo se
+ * prende cuando el banco confirmó la afiliación — y sin él, ni la API ni la
+ * página de pago ofrecen C2P.
+ *
+ * Los códigos llevan ceros a la izquierda ("009635"): se guardan como texto,
+ * tal cual los emite el banco.
+ */
+export async function guardarAfiliacionC2p(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  const codAfiliado = String(datos.get("codAfiliado") ?? "").trim();
+  const habilitado = datos.get("habilitado") === "1";
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+  if (codAfiliado && !/^\d{4,12}$/.test(codAfiliado)) {
+    return { ok: false, error: "El código de afiliado son solo dígitos (4 a 12)." };
+  }
+  if (habilitado && !codAfiliado) {
+    return { ok: false, error: "No se puede habilitar C2P sin el código de afiliado." };
+  }
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { btCodAfiliado: codAfiliado || null, btC2pEnabled: habilitado },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return {
+    ok: true,
+    mensaje: habilitado
+      ? "C2P habilitado. El comercio ya puede cobrar con Botón de Pago."
+      : "Afiliación guardada. C2P queda apagado hasta habilitarlo.",
+  };
+}
+
+// ── Logo del comercio (subida en su nombre durante el alta) ─────────────────
+
+export async function subirLogoComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+
+  const archivo = datos.get("logo");
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { ok: false, error: "Elige una imagen primero." };
+  }
+  if (archivo.size > LOGO_MAX_BYTES) {
+    return { ok: false, error: "La imagen pesa más de 512 KB." };
+  }
+  const buf = Buffer.from(await archivo.arrayBuffer());
+  const mime = tipoDeImagen(buf);
+  if (!mime) return { ok: false, error: "Solo aceptamos PNG, JPG o WebP." };
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { logo: buf, logoMime: mime, logoUpdatedAt: new Date() },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return { ok: true, mensaje: "Logo guardado. Ya se ve en sus cajas y en su página de pago." };
 }
