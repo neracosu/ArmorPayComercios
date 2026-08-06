@@ -3,6 +3,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
 import GestionApiKeys from "./GestionApiKeys";
+import GestionWebhooks from "./GestionWebhooks";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,8 @@ export default async function ApiPage() {
   if (!session) redirect("/login?callbackUrl=/comercio/api");
   if (session.user.role !== "ORG_ADMIN") redirect("/validar");
 
-  const { llaves, comercio } = await withSessionTenant(session, async () => {
-    const [llaves, comercio] = await Promise.all([
+  const { llaves, endpoints, comercio } = await withSessionTenant(session, async () => {
+    const [llaves, endpoints, comercio] = await Promise.all([
       prisma.apiKey.findMany({
         orderBy: { createdAt: "desc" },
         select: {
@@ -24,12 +25,16 @@ export default async function ApiPage() {
           createdAt: true,
         },
       }),
+      prisma.webhookEndpoint.findMany({
+        orderBy: { createdAt: "desc" },
+        select: { id: true, url: true, isActive: true, createdAt: true },
+      }),
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
         select: { razonSocial: true },
       }),
     ]);
-    return { llaves, comercio };
+    return { llaves, endpoints, comercio };
   });
 
   return (
@@ -57,6 +62,14 @@ export default async function ApiPage() {
             isActive: k.isActive,
             lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
             createdAt: k.createdAt.toISOString(),
+          }))}
+        />
+        <GestionWebhooks
+          endpoints={endpoints.map((e) => ({
+            id: e.id,
+            url: e.url,
+            isActive: e.isActive,
+            createdAt: e.createdAt.toISOString(),
           }))}
         />
       </main>

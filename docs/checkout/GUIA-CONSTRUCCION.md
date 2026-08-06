@@ -214,7 +214,9 @@ model ApiEvent {                            // bitácora append-only + base del 
 
 ---
 
-## FASE 4 — Worker: webhooks salientes + housekeeping (~1-2 días)
+## FASE 4 — Worker: webhooks salientes + housekeeping ✅ HECHA (2026-08-06)
+
+> `worker/index.ts` corriendo como `armorpay-worker` en PM2 (tsx, patrón del gateway con alertas sendmail `-f`). Entregas con la firma del contrato (`x-armorpay-*`), backoff 1m/5m/30m/2h/12h → DEAD, endpoint inactivo → DEAD sin ruido; housekeeping con `updateMany` condicionado (no pisa lo confirmado) + webhook `intent.expired`. UI de webhooks agregada a `/comercio/api` (secreto `whsec_` mostrado UNA vez, cifrado en reposo, URL https pública obligatoria, máx. 3 activos). E2E contra el proceso vivo: 6/6 (DELIVERED con firma válida verificada por un receptor real, FAILED_RETRYING con backoff, EXPIRED sin tocar CONFIRMED).
 
 Proceso PM2 nuevo `armorpay-worker` (tsx, mismo patrón que el gateway: loop + try/catch + sendmail con `-f` tras N fallos — copiar el esquema de alertas de `gateway/index.ts`, incluida la lección SPF).
 
