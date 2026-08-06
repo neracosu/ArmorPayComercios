@@ -113,7 +113,7 @@ export default function Portada() {
 
       {/* ── Hero: el momento de la duda, con el producto REAL al lado ── */}
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-16 sm:pt-24">
-        <div className="grid items-center gap-12 lg:grid-cols-[1fr_300px]">
+        <div className="grid items-center gap-12 lg:grid-cols-[1fr_400px]">
           <div>
             <p className="font-medium uppercase tracking-[0.2em] text-marca-700 text-xs">
               Plataforma de validación de pagos
@@ -156,19 +156,19 @@ export default function Portada() {
             </div>
           </div>
 
-          {/* Captura REAL de la página de pago (regla de la portada: nada
-              inventado — esto es el producto tal cual se ve hoy). */}
+          {/* Captura REAL de la caja: el mismo caso que cuenta el titular —
+              la referencia buscada y el pago encontrado en el banco. */}
           <figure className="hidden justify-self-center lg:block">
             {/* eslint-disable-next-line @next/next/no-img-element -- asset estático propio, dimensiones fijas */}
             <img
-              src="/producto/pay-movil.webp"
-              alt="La página de pago de ArmorPay en un teléfono: el monto exacto en bolívares, los datos del comercio y el botón de confirmar el pago"
-              width={585}
-              height={1092}
-              className="w-[280px] rounded-[1.75rem] border-[6px] border-tinta shadow-2xl"
+              src="/producto/caja-resultado.webp"
+              alt="La caja de ArmorPay: la referencia buscada y el pago encontrado en el banco — Bs 1.450,00 con su botón de confirmar el cobro"
+              width={740}
+              height={295}
+              className="w-[400px] rounded-card border border-tinta-borde shadow-2xl"
             />
             <figcaption className="mt-3 text-center text-xs text-tinta-tenue">
-              Tu página de pago, tal cual se ve hoy.
+              La caja, tal cual se ve hoy: eso dice tu banco, no una captura.
             </figcaption>
           </figure>
         </div>
@@ -328,6 +328,57 @@ export default function Portada() {
               <p className="mt-2 text-sm leading-relaxed text-tinta-suave">{c.texto}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── El SEGUNDO caso: la venta en línea (el gemelo del hero) ── */}
+      <section className="border-t border-tinta-borde px-6 py-16 sm:py-20">
+        <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-[300px_1fr]">
+          <figure className="hidden justify-self-center lg:block">
+            {/* eslint-disable-next-line @next/next/no-img-element -- asset estático propio, dimensiones fijas */}
+            <img
+              src="/producto/pay-movil.webp"
+              alt="La página de pago de ArmorPay en un teléfono: el monto exacto en bolívares, los datos del comercio y el botón de confirmar el pago"
+              width={585}
+              height={1092}
+              className="w-[280px] rounded-[1.75rem] border-[6px] border-tinta shadow-2xl"
+            />
+            <figcaption className="mt-3 text-center text-xs text-tinta-tenue">
+              Tu página de pago, tal cual se ve hoy.
+            </figcaption>
+          </figure>
+
+          <div>
+            <h2 className="max-w-2xl font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
+              ¿Vendes también en línea? El mismo validador, en tu web.
+            </h2>
+            <p className="mt-4 max-w-xl leading-relaxed text-tinta-suave">
+              Tu cliente paga por pago móvil y{" "}
+              <strong className="font-semibold text-tinta">confirma solo</strong>, en una
+              página de pago con tu logo y tu razón social — o paga al instante
+              con el Botón de Pago (C2P) del Banco del Tesoro. Sin capturas por
+              WhatsApp, sin conciliar a mano.
+            </p>
+            <ul className="mt-6 space-y-2.5">
+              {[
+                "Un enlace de pago listo para compartir — cero código",
+                "Plugin de WooCommerce: el pedido se confirma solo cuando el banco confirma",
+                "API para tu carrito, con avisos firmados a tu servidor",
+              ].map((punto) => (
+                <li key={punto} className="flex items-start gap-2 text-tinta-suave">
+                  <Check className="mt-1 h-4 w-4 shrink-0 text-marca-700" aria-hidden />
+                  {punto}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/docs/api"
+              className="mt-7 inline-flex items-center gap-2 rounded-control border border-tinta-borde px-5 py-3 font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
+            >
+              Ver la documentación para tu web
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
         </div>
       </section>
 
