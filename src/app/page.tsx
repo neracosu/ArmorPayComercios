@@ -2,7 +2,12 @@ import Link from "next/link";
 import { PLANES } from "@/lib/planes";
 import {
   ArrowRight,
+  Bell,
   Check,
+  DollarSign,
+  Globe,
+  Landmark,
+  Palette,
   Store,
   Building2,
   ShieldCheck,
@@ -362,6 +367,68 @@ export default function Portada() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Los valores añadidos: por qué nosotros ── */}
+      <section className="px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="max-w-2xl font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
+            Lo que te llevas con nosotros, punto por punto
+          </h2>
+          <p className="mt-4 max-w-2xl leading-relaxed text-tinta-suave">
+            No es solo confirmar un pago. Es todo lo que hay que construir
+            alrededor para que cobrar sea un problema resuelto — y que con
+            nosotros ya viene hecho.
+          </p>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                icono: Globe,
+                titulo: "Cobras en tu web igual que en tu caja",
+                texto:
+                  "Página de pago lista para enlazar, API para tu carrito y plugin de WooCommerce. Tu cliente confirma por referencia o paga al instante con Botón de Pago (C2P).",
+              },
+              {
+                icono: Bell,
+                titulo: "Te avisamos nosotros — tu tienda no pregunta",
+                texto:
+                  "El banco nos notifica y nosotros avisamos a tu servidor al momento, con firma y reintentos. Tu pedido se despacha solo, sin quedarse consultando.",
+              },
+              {
+                icono: ShieldCheck,
+                titulo: "Un pago se cobra una sola vez, en todo tu negocio",
+                texto:
+                  "Tu caja física y tu tienda en línea validan contra el mismo árbitro: la misma referencia no se puede cobrar dos veces, ni por error ni por viveza.",
+              },
+              {
+                icono: DollarSign,
+                titulo: "Precia en dólares, cobra en bolívares",
+                texto:
+                  "Tasa BCV con respaldo y auditoría: se congela al crear el cobro, tu carrito puede leerla por API, y quien paga con la tasa del día no rebota.",
+              },
+              {
+                icono: Palette,
+                titulo: "Tu marca al frente, siempre",
+                texto:
+                  "Tu logo en tu panel, en tus cajas y en tu página de pago. Tu cliente te ve a ti — nosotros validamos desde atrás.",
+              },
+              {
+                icono: Landmark,
+                titulo: "¿Sin nada tramitado con el banco? Lo hacemos por ti",
+                texto:
+                  "Gestionamos tu afiliación completa: credenciales, llave y vinculación. Llegas a cobrar, no a aprender trámites bancarios.",
+              },
+            ].map((v) => (
+              <div key={v.titulo} className="rounded-card border border-tinta-borde bg-white p-6">
+                <v.icono className="h-5 w-5 text-marca-700" aria-hidden />
+                <h3 className="mt-3 font-display font-bold leading-snug tracking-tight text-tinta">
+                  {v.titulo}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-tinta-suave">{v.texto}</p>
               </div>
             ))}
           </div>
