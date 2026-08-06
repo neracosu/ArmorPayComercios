@@ -22,6 +22,9 @@ export const dynamic = "force-dynamic";
 
 const eventSchema = z.object({
   id: z.string().min(1),
+  // Default = un gateway viejo (sin el campo) sigue ingiriendo sin romper:
+  // cero acople de orden de deploy. Todo lo que no declara banco es BDT.
+  banco: z.string().min(1).default("BDT"),
   numeroCuenta: z.string().min(1),
   montoTransaccion: z.string(),
   fechaTransaccion: z.string(),
@@ -104,6 +107,7 @@ export async function POST(req: NextRequest) {
           // Pasarlo no debilita nada: si acá viniera el comercio equivocado, la
           // extensión lo pisa con el del contexto (cubierto por el test de aislamiento).
           organizationId,
+          banco: e.banco,
           numeroCuenta: e.numeroCuenta,
           montoTransaccion: e.montoTransaccion,
           fechaTransaccion: e.fechaTransaccion,

@@ -29,6 +29,9 @@ export interface PagoEncontrado {
   referencia: string;
   fecha: string;
   hora: string;
+  /** Banco RECEPTOR (BDT | BT): dónde entró el dinero. */
+  banco: string;
+  /** Banco del pagador (código de 4 dígitos), no confundir con `banco`. */
   bancoOrigen: string;
   desdeCuenta: string;
   desdeDni: string;
@@ -57,6 +60,7 @@ export async function buscarPorReferencia(sufijo: string): Promise<PagoEncontrad
       referencia: true,
       fechaTransaccion: true,
       horaTransaccion: true,
+      banco: true,
       desdeBanco: true,
       desdeCuenta: true,
       desdeDni: true,
@@ -84,6 +88,7 @@ export async function buscarPorReferencia(sufijo: string): Promise<PagoEncontrad
       referencia: p.referencia,
       fecha: p.fechaTransaccion,
       hora: p.horaTransaccion,
+      banco: p.banco,
       bancoOrigen: p.desdeBanco,
       desdeCuenta: p.desdeCuenta,
       desdeDni: p.desdeDni,

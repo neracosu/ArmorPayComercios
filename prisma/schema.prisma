@@ -139,6 +139,7 @@ model BankAccount {
   id             String   @id @default(cuid())
   organizationId String
   accountNumber  String   @unique // 20 dígitos — único global: una cuenta pertenece a un solo comercio
+  banco          String   @default("BDT") // banco donde vive la cuenta: BDT | BT
   alias          String
   merchantCode   String?  @unique
   isActive       Boolean  @default(true)
@@ -160,6 +161,10 @@ model BankAccount {
 model BankTransaction {
   id               String   @id @default(cuid())
   organizationId   String
+  // Banco RECEPTOR del crédito (BDT | BT). Default "BDT" = backfill correcto:
+  // todo lo insertado antes de esta columna era BDT (las filas BT caían en
+  // `sinComercio` porque sus cuentas no existían como BankAccount).
+  banco            String   @default("BDT")
   numeroCuenta     String
   montoTransaccion String
   fechaTransaccion String // yyyy-mm-dd
@@ -181,6 +186,7 @@ model BankTransaction {
   @@unique([numeroCuenta, referencia, fechaTransaccion, horaTransaccion], name: "uniq_tx")
   @@index([organizationId, receivedAt])
   @@index([organizationId, referencia])
+  @@index([organizationId, banco])
 }
 
 enum ShiftStatus {
@@ -262,10 +268,11 @@ enum LeadEstado {
 
 /// Solicitud de propuesta que llega desde la portada pública.
 ///
-/// NO lleva `organizationId` a propósito: cuando alguien la envía todavía no
-/// existe ningún comercio — precisamente eso es lo que viene a pedir. Es un
-/// modelo de plataforma, así que queda fuera del filtro de tenant y solo lo ve
-/// el `PLATFORM_ADMIN`.
+/// OJO: aunque nace sin comercio, SÍ declara `organizationId` (nullable, por
+/// la trazabilidad de conversión de abajo) — y eso basta para que la extensión
+/// DMMF lo trate como modelo de tenant y exija contexto. El código que lo
+/// maneja opera con `runAsPlatform`/cliente crudo porque es un modelo de
+/// plataforma que solo ve el `PLATFORM_ADMIN`.
 model Lead {
   id             String     @id @default(cuid())
   empresa        String

@@ -12,6 +12,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export interface BankCreditEvent {
   /** Identificador estable del evento: mismo pago → mismo id, siempre. */
   id: string;
+  /**
+   * Banco RECEPTOR del crédito: "BDT" | "BT". No confundir con `desdeBanco`,
+   * que es el banco del pagador. Campo aditivo (la ingesta asume "BDT" si
+   * falta), por eso el contrato sigue en version 1.
+   */
+  banco: string;
   numeroCuenta: string;
   montoTransaccion: string;
   fechaTransaccion: string; // yyyy-mm-dd

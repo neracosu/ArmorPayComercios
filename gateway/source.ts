@@ -7,8 +7,10 @@ import type { BankCreditEvent } from "./contract";
  * Por qué se lee la base y no un endpoint: agregarle rutas al proyecto que
  * factura para Armor Market sería meter código en su proceso, y la regla es
  * que no se toca. El acoplamiento de esquema es tolerable porque la forma de
- * `WebhookTransaction` **la dicta el banco** — son los campos exactos de la
- * notificación del BDT, no una decisión de producto nuestra.
+ * `WebhookTransaction` **la dictan los bancos** — son los campos exactos de la
+ * notificación del BDT, y el interno mapea el payload del BT a esas mismas
+ * columnas (columna `banco` distingue el receptor). No es una decisión de
+ * producto nuestra.
  *
  * La conexión usa un usuario de **solo lectura** (`mardenli_apgwro`, con
  * privilegio SELECT y nada más): si el gateway tuviera un bug, no puede
@@ -38,6 +40,7 @@ function getPool(): mysql.Pool {
 
 interface Row {
   id: string;
+  banco: string;
   numeroCuenta: string;
   montoTransaccion: string;
   fechaTransaccion: string;
@@ -61,7 +64,7 @@ interface Row {
  */
 export async function readCreditsSince(desde: Date, limite = 500): Promise<BankCreditEvent[]> {
   const [rows] = await getPool().query<mysql.RowDataPacket[]>(
-    `SELECT id, numeroCuenta, montoTransaccion, fechaTransaccion, horaTransaccion,
+    `SELECT id, banco, numeroCuenta, montoTransaccion, fechaTransaccion, horaTransaccion,
             referencia, tipo, descripcion, desdeBanco, tipoProd, desdeCuenta,
             desdeDni, clientIp, receivedAt
        FROM WebhookTransaction
@@ -73,6 +76,8 @@ export async function readCreditsSince(desde: Date, limite = 500): Promise<BankC
 
   return (rows as unknown as Row[]).map((r) => ({
     id: r.id,
+    // Receptor del crédito. Sin filtro por banco: el checkout valida en los dos.
+    banco: r.banco,
     numeroCuenta: r.numeroCuenta,
     montoTransaccion: r.montoTransaccion,
     fechaTransaccion: r.fechaTransaccion,

@@ -79,7 +79,17 @@ function FilaPago({ pago, hayTurno }: { pago: any; hayTurno: boolean }) {
           <ArrowDownLeft className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="monto">Bs {bolivares(pago.monto)}</p>
+          <p className="monto">
+            Bs {bolivares(pago.monto)}
+            {pago.banco && (
+              <span
+                title="Banco donde entró el pago"
+                className="ml-2 inline-block rounded-full bg-marca-700/10 px-2 py-0.5 align-middle text-xs font-medium tracking-wide text-marca-700"
+              >
+                {pago.banco}
+              </span>
+            )}
+          </p>
           <p className="mt-1 text-sm text-tinta-tenue">
             Ref. {pago.referencia} · Banco {pago.bancoOrigen} · {pago.fecha} {hora(pago.hora)}
           </p>
