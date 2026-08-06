@@ -223,6 +223,20 @@ El monto y el concepto salen del intent — el body nunca los lleva.`}</pre>
   "fetchedAt": "2026-08-06T14:00:00.000Z" }
 
 # Sin tasa utilizable: 503 RATE_UNAVAILABLE — nunca inventamos una.`}</pre>
+          <div className="mt-4 rounded-card border border-alerta/40 bg-alerta-suave/40 p-4 text-sm leading-relaxed text-tinta-suave">
+            <p className="font-medium text-tinta">Cumplimiento en Venezuela</p>
+            <p className="mt-1.5">
+              Si tu catálogo muestra precios en divisas, la norma exige que el
+              precio en <strong className="text-tinta">bolívares esté exhibido</strong> y
+              que la conversión sea a <strong className="text-tinta">tasa oficial BCV</strong>,
+              con la moneda y la tasa claramente informadas — nunca una tasa
+              paralela, y nunca precios distintos según el método de pago.
+              Nuestra página de pago ya lo resuelve en el paso de cobro (Bs como
+              monto principal + «Ref. USD … · tasa oficial BCV …»); para tu
+              catálogo, usa este endpoint y muestra ambos. Esto es una guía, no
+              asesoría legal.
+            </p>
+          </div>
         </section>
 
         {/* ── Banks ── */}
