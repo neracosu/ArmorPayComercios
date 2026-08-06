@@ -169,7 +169,136 @@ async function main() {
   const settings = await prisma.platformSetting.findMany();
   check("PlatformSetting no exige contexto de tenant", Array.isArray(settings));
 
+  // ── Checkout (Fase 2): los modelos nuevos quedan protegidos solos ──
+
+  // 11. Con el contexto de la org A (el que abre su ApiKey), un intent de B
+  //     no se resuelve ni por id ni por idempotencyKey.
+  const keyA = await raw.apiKey.create({
+    data: { organizationId: orgA.id, name: "test", prefix: `ak_test_${stamp}`, hashedKey: "x" },
+  });
+  const intentB = await raw.checkoutIntent.create({
+    data: {
+      organizationId: orgB.id,
+      apiKeyId: "key-de-b",
+      externalRef: "pedido-b",
+      amountVES: "50.00",
+      concepto: "prueba",
+      idempotencyKey: `idem-${stamp}`,
+      expiresAt: new Date(Date.now() + 30 * 60_000),
+    },
+  });
+  await runWithTenant(orgA.id, async () => {
+    const porId = await prisma.checkoutIntent.findUnique({ where: { id: intentB.id } });
+    const porIdem = await prisma.checkoutIntent.findFirst({
+      where: { idempotencyKey: `idem-${stamp}` },
+    });
+    check("la ApiKey de la org A no resuelve intents de B", porId === null && porIdem === null);
+  });
+
+  // 12. La MISMA idempotencyKey en dos orgs distintas no colisiona: el unique
+  //     es compuesto [organizationId, idempotencyKey].
+  let intentA: { id: string } | null = null;
+  try {
+    intentA = await runWithTenant(orgA.id, () =>
+      prisma.checkoutIntent.create({
+        data: {
+          organizationId: orgA.id,
+          apiKeyId: keyA.id,
+          externalRef: "pedido-a",
+          amountVES: "100.00",
+          concepto: "prueba",
+          idempotencyKey: `idem-${stamp}`, // la misma que usó B
+          expiresAt: new Date(Date.now() + 30 * 60_000),
+        },
+      })
+    );
+  } catch {
+    intentA = null;
+  }
+  check("idempotencyKey repetida entre orgs distintas NO colisiona", intentA !== null);
+
+  // 13. El árbitro compartido: caja y checkout no pueden cobrar el mismo pago,
+  //     en ningún orden. Lo garantiza `primaryKey @unique`, no el código.
+  const txArb1 = await raw.bankTransaction.create({
+    data: { ...txCommon, organizationId: orgA.id, numeroCuenta: "0175A", referencia: `${stamp}0004` },
+  });
+  const txArb2 = await raw.bankTransaction.create({
+    data: { ...txCommon, organizationId: orgA.id, numeroCuenta: "0175A", referencia: `${stamp}0005` },
+  });
+
+  // 13a. Caja cobra primero → el checkout pierde con P2002.
+  await raw.paymentClaim.create({
+    data: {
+      organizationId: orgA.id,
+      source: "LOOKUP",
+      bankTransactionId: txArb1.id,
+      reference: txArb1.referencia,
+      amount: "100.00",
+      numeroCuenta: txArb1.numeroCuenta,
+      primaryKey: txArb1.id,
+    },
+  });
+  let p2002Checkout = false;
+  try {
+    await runWithTenant(orgA.id, () =>
+      prisma.paymentClaim.create({
+        data: {
+          organizationId: orgA.id,
+          source: "CHECKOUT",
+          bankTransactionId: txArb1.id,
+          reference: txArb1.referencia,
+          amount: "100.00",
+          numeroCuenta: txArb1.numeroCuenta,
+          primaryKey: txArb1.id,
+        },
+      })
+    );
+  } catch (e) {
+    p2002Checkout = (e as { code?: string }).code === "P2002";
+  }
+  check("un pago cobrado en caja NO confirma un checkout (P2002)", p2002Checkout);
+
+  // 13b. Checkout cobra primero (sin caja: shift/user/branch null) → la caja
+  //      pierde con P2002.
+  const claimCheckout = await runWithTenant(orgA.id, () =>
+    prisma.paymentClaim.create({
+      data: {
+        organizationId: orgA.id,
+        source: "CHECKOUT",
+        bankTransactionId: txArb2.id,
+        checkoutIntentId: intentA!.id,
+        reference: txArb2.referencia,
+        amount: "100.00",
+        numeroCuenta: txArb2.numeroCuenta,
+        primaryKey: txArb2.id,
+      },
+    })
+  );
+  let p2002Caja = false;
+  try {
+    await raw.paymentClaim.create({
+      data: {
+        organizationId: orgA.id,
+        source: "LOOKUP",
+        bankTransactionId: txArb2.id,
+        reference: txArb2.referencia,
+        amount: "100.00",
+        numeroCuenta: txArb2.numeroCuenta,
+        primaryKey: txArb2.id,
+      },
+    });
+  } catch (e) {
+    p2002Caja = (e as { code?: string }).code === "P2002";
+  }
+  check(
+    "un pago cobrado por checkout NO se cobra en caja (P2002, sin caja asignada)",
+    p2002Caja && claimCheckout.shiftId === null
+  );
+
   // ── Limpieza ──
+  await raw.paymentClaim.deleteMany({ where: { organizationId: { in: [orgA.id, orgB.id] } } });
+  await raw.checkoutIntent.deleteMany({ where: { organizationId: { in: [orgA.id, orgB.id] } } });
+  await raw.apiKey.deleteMany({ where: { organizationId: { in: [orgA.id, orgB.id] } } });
   await raw.bankTransaction.deleteMany({ where: { organizationId: { in: [orgA.id, orgB.id] } } });
   await raw.organization.deleteMany({ where: { id: { in: [orgA.id, orgB.id] } } });
 

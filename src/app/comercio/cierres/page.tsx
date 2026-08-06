@@ -96,7 +96,7 @@ export default async function CierresPage() {
                     Bs {bs(Number(d.amount))} · Ref. {d.reference}
                   </p>
                   <p className="text-tinta-suave">
-                    {d.user.name} · {new Date(d.claimedAt).toLocaleString("es-VE")}
+                    {d.user?.name ?? "Checkout web"} · {new Date(d.claimedAt).toLocaleString("es-VE")}
                   </p>
                   {d.ackReason && (
                     <p className="mt-1 text-tinta-tenue">Motivo: {d.ackReason}</p>

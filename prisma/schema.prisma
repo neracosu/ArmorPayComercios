@@ -76,13 +76,16 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users        User[]
-  branches     Branch[]
-  accounts     BankAccount[]
-  shifts       Shift[]
-  claims       PaymentClaim[]
-  transactions BankTransaction[]
-  keyEvents    AuthKeyEvent[]
+  users            User[]
+  branches         Branch[]
+  accounts         BankAccount[]
+  shifts           Shift[]
+  claims           PaymentClaim[]
+  transactions     BankTransaction[]
+  keyEvents        AuthKeyEvent[]
+  apiKeys          ApiKey[]
+  checkoutIntents  CheckoutIntent[]
+  webhookEndpoints WebhookEndpoint[]
 
   @@index([status])
 }
@@ -187,8 +190,9 @@ model BankTransaction {
   receivedAt       DateTime @default(now())
   rawPayload       String   @db.MediumText
 
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  claims       PaymentClaim[]
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  claims          PaymentClaim[]
+  checkoutIntents CheckoutIntent[]
 
   @@unique([numeroCuenta, referencia, fechaTransaccion, horaTransaccion], name: "uniq_tx")
   @@index([organizationId, receivedAt])
@@ -229,18 +233,28 @@ model Shift {
 enum ClaimSource {
   LOOKUP
   ONLINE
+  CHECKOUT
 }
 
 /// Ledger de cobros. `primaryKey @unique` = un solo cobro primario por pago
 /// (antifraude one-time redemption, arbitrado por la base, race-safe).
+///
+/// Es el árbitro COMPARTIDO entre la caja y el checkout — no hay antifraude
+/// paralelo (lección madre del panel interno). Un cobro de checkout no tiene
+/// caja: por eso `shiftId`/`userId`/`branchId` son nullable y `source` lo
+/// distingue. Camino REFERENCIA: `primaryKey = bankTransaction.id` (la misma
+/// clave que usa la caja → la base garantiza que un pago cobrado en caja no
+/// confirma un checkout ni al revés). Camino C2P (sin BankTransaction):
+/// `primaryKey = "c2p:" + organizationId + ":" + referencia` (clave sintética).
 model PaymentClaim {
   id                String      @id @default(cuid())
   organizationId    String
-  shiftId           String
-  userId            String
-  branchId          String
+  shiftId           String? // null = cobro de checkout, sin caja
+  userId            String?
+  branchId          String?
   source            ClaimSource @default(LOOKUP)
   bankTransactionId String?
+  checkoutIntentId  String?     @unique
   reference         String
   amount            Decimal     @db.Decimal(18, 2)
   numeroCuenta      String
@@ -254,16 +268,141 @@ model PaymentClaim {
   primaryKey        String?     @unique
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  shift           Shift            @relation(fields: [shiftId], references: [id], onDelete: Restrict)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Restrict)
-  branch          Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  shift           Shift?           @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
   bankTransaction BankTransaction? @relation(fields: [bankTransactionId], references: [id], onDelete: Restrict)
+  checkoutIntent  CheckoutIntent?  @relation(fields: [checkoutIntentId], references: [id], onDelete: Restrict)
   duplicateOf     PaymentClaim?    @relation("Dup", fields: [duplicateOfId], references: [id], onDelete: SetNull)
   duplicates      PaymentClaim[]   @relation("Dup")
 
   @@index([organizationId, claimedAt])
   @@index([shiftId])
   @@index([bankTransactionId])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Checkout (Fase 2 de la guía). Todos con `organizationId`: quedan
+// protegidos solos por la extensión DMMF.
+// ─────────────────────────────────────────────────────────────────
+
+/// Credencial de la API v1. El key completo se muestra UNA sola vez al
+/// crearlo; acá solo viven el hash y el prefijo de lookup.
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String // "producción tienda web"
+  prefix         String    @unique // "ak_live_" + 8 chars visibles — lookup
+  hashedKey      String // sha256 del key completo
+  isActive       Boolean   @default(true)
+  lastUsedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+enum IntentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
+enum IntentMethod {
+  REFERENCIA
+  C2P
+}
+
+/// Una intención de cobro del carrito del comercio. El monto lo fija el
+/// servidor al crearla y JAMÁS se compara contra lo que declare el cliente
+/// final — solo contra lo que registró el banco.
+model CheckoutIntent {
+  id             String        @id @default(cuid())
+  organizationId String
+  apiKeyId       String
+  externalRef    String // id del pedido en el carrito del comercio
+  amountVES      Decimal       @db.Decimal(18, 2)
+  concepto       String // ≤40, saneado — viaja al C2P
+  method         IntentMethod?
+  status         IntentStatus  @default(PENDING)
+  idempotencyKey String
+  // resultado
+  bankTransactionId String? // camino REFERENCIA
+  c2pReferencia     String? // camino C2P (referencia bancaria)
+  c2pCodres         String?
+  gatewayResponse   String?  @db.Text // crudo del banco — evidencia forense
+  overpaidVES       Decimal? @db.Decimal(18, 2)
+  expiresAt      DateTime
+  confirmedAt    DateTime?
+  createdAt      DateTime      @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  bankTransaction BankTransaction? @relation(fields: [bankTransactionId], references: [id], onDelete: Restrict)
+  claim           PaymentClaim?
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  // Para el housekeeping del worker: barrer PENDING vencidos cross-tenant.
+  @@index([status, expiresAt])
+}
+
+/// Adónde avisamos al comercio. El secreto de firma se cifra igual que la
+/// AuthKey (AES-256-GCM con APP_SECRET).
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  organizationId String
+  url            String
+  secretEnc      String   @db.Text
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED_RETRYING
+  DEAD
+}
+
+/// Cola de entregas de webhooks al comercio (la procesa el worker, Fase 4).
+/// Sin FKs a propósito: tabla de alto volumen, append + update de estado.
+model WebhookDelivery {
+  id             String         @id @default(cuid())
+  organizationId String
+  endpointId     String
+  intentId       String
+  payload        String         @db.Text
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  nextRetryAt    DateTime       @default(now())
+  lastError      String?        @db.Text
+  createdAt      DateTime       @default(now())
+
+  @@index([status, nextRetryAt])
+  @@index([organizationId, createdAt])
+}
+
+/// Bitácora append-only de la API + base del rate limit persistido (patrón
+/// Lead). Sin FKs a propósito: nada la borra en cascada — es evidencia.
+model ApiEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  apiKeyId       String?
+  intentId       String?
+  action         String // intent_created | ref_validated | ref_rejected | c2p_ok | c2p_fail | ...
+  detail         String?  @db.Text // SIEMPRE enmascarado
+  clientIp       String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([clientIp, createdAt]) // rate limit por IP
+  @@index([apiKeyId, createdAt]) // rate limit por key
 }
 
 enum LeadEstado {

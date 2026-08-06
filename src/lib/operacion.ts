@@ -92,10 +92,11 @@ export async function buscarPorReferencia(sufijo: string): Promise<PagoEncontrad
       bancoOrigen: p.desdeBanco,
       desdeCuenta: p.desdeCuenta,
       desdeDni: p.desdeDni,
+      // Un cobro de checkout no tiene caja: la alarma dice de dónde vino igual.
       cobrado: c
         ? {
-            caja: c.user.name,
-            sucursal: c.branch.name,
+            caja: c.user?.name ?? "el checkout web",
+            sucursal: c.branch?.name ?? "en línea",
             cuando: c.claimedAt.toISOString(),
             monto: c.amount.toString(),
           }

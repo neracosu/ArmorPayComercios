@@ -89,7 +89,9 @@ El gateway hoy es un poller puro (`gateway/index.ts` lo dice: ":3102 conceptual;
 
 ---
 
-## FASE 2 — Modelo de datos del checkout (migración grande, ~1 día)
+## FASE 2 — Modelo de datos del checkout ✅ HECHA (2026-08-06)
+
+> Migración `checkout_modelo_datos` tal como estaba diseñada (ApiKey, CheckoutIntent + enums, WebhookEndpoint, WebhookDelivery, ApiEvent; PaymentClaim con caja nullable + `CHECKOUT` + `checkoutIntentId @unique`). Desviaciones deliberadas: índice extra `[status, expiresAt]` en CheckoutIntent (housekeeping del worker) y FKs reales en CheckoutIntent↔BankTransaction/PaymentClaim (integridad; WebhookDelivery y ApiEvent sin FK como estaba escrito). test-isolation extendido a 15 casos (11-13 nuevos, ambos sentidos del árbitro) — 15/15. Fallout resuelto: el código de caja ahora muestra «cobrado por el checkout web» cuando el cobro no tiene caja.
 
 Todos con `organizationId` → protegidos solos por la extensión DMMF.
 

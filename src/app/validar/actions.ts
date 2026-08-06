@@ -106,8 +106,8 @@ export async function cobrar(
         ok: false,
         error: "Este pago ya fue cobrado.",
         yaCobrado: {
-          caja: existente.user.name,
-          sucursal: existente.branch.name,
+          caja: existente.user?.name ?? "el checkout web",
+          sucursal: existente.branch?.name ?? "en línea",
           cuando: existente.claimedAt.toISOString(),
         },
       };
@@ -141,8 +141,8 @@ export async function cobrar(
         error: "Otra caja cobró este pago en este mismo momento.",
         yaCobrado: ganador
           ? {
-              caja: ganador.user.name,
-              sucursal: ganador.branch.name,
+              caja: ganador.user?.name ?? "el checkout web",
+              sucursal: ganador.branch?.name ?? "en línea",
               cuando: ganador.claimedAt.toISOString(),
             }
           : undefined,
