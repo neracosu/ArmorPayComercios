@@ -33,6 +33,21 @@ Son dos saltos distintos, con acoplamientos distintos:
 
 El gateway **tiene que quedarse en este host para siempre**: la IP whitelisteada por el banco es la de este servidor. Por eso su lectura siempre es local, y por eso lo único que puede mudarse es el SaaS.
 
+## El segundo banco del interno y lo que cambia acá (2026-08-06)
+
+Desde 2026-07-29 el proyecto interno está afiliado a un **segundo banco: Banco del Tesoro (BT, 0163)**, en producción completa desde el 08-03. Consecuencias verificadas leyendo el código de ambos lados:
+
+- `WebhookTransaction` (la tabla que el gateway tailea) ya no es solo BDT: tiene columna **`banco` ("BDT"|"BT")** con índice `[banco, receivedAt]`. El webhook BT del interno escribe `tipo = "CREDITO"`, así que **el gateway HOY lee y reenvía las filas BT** — su SELECT no filtra por `banco` y el contrato no lleva ese campo. Inofensivo por ahora: las cuentas BT no existen como `BankAccount` de ningún comercio → la ingesta las cuenta en `sinComercio` y las descarta.
+- **Gate obligatorio antes de afiliar al SaaS un comercio con cuenta BT**: decidir entre filtrar `banco = 'BDT'` en `gateway/source.ts` o versionar el contrato con el campo `banco`. Hoy un evento BT que llegara a ingresarse sería indistinguible de uno BDT.
+- El **C2P/«Botón de Pago» del Tesoro NO pasa por `WebhookTransaction`** (en el interno vive en `ValidationRequest`) → el gateway nunca lo ve. Si el SaaS algún día ofrece C2P, es una integración nueva, no llega por esta vía.
+- El comentario de `gateway/source.ts` («la forma de la tabla la dicta el banco») quedó impreciso: la dictan **los bancos** — el interno mapea el payload BT a las columnas con forma BDT.
+
+**Regla de trabajo entre proyectos**: cada repo se administra en SU propia sesión de Claude Code (`/home/mardenli/armorpay` y `/home/mardenli/armorpay-cloud`), cada uno con su memoria — nunca editar ambos desde una misma sesión. Todo cambio del interno que toque `WebhookTransaction` (columnas, valores de `tipo`, bancos nuevos) se contrasta con `gateway/source.ts` + `gateway/contract.ts` antes de desplegar; esa regla también está escrita en el CLAUDE.md del interno.
+
+## Visión de producto: checkout para e-commerce (2026-08-06)
+
+Próxima evolución definida por Neri: que el comercio afiliado confirme compras **en su propia web** (plugin WordPress, embed, o API para su carrito) usando la validación por referencia y el BT C2P (**confirmado 100% operativo**, 2026-08-06). Las guías base — 3 pasarelas del grupo en producción (VIP Play, Terrazas, Hotel La Guaira) — están en `docs/referencias-pasarelas/`, con un README que las mapea a este producto y lleva el **estado de los gates**: el único abierto es **G0 (opinión legal del plan maestro)**; ya decidido que la ejecución C2P va **por el gateway** (dominio distinto, mismo servidor whitelisteado) y que las afiliaciones por comercio se gestionan vía contactos directos con los bancos. **El plan de construcción completo, paso a paso y por fases, está en `docs/checkout/GUIA-CONSTRUCCION.md`** (escrito 2026-08-06 tras inventariar todo este repo): Fase 0 contrato v2 con `banco` → Fase 1 ejecutor bancario en el gateway (HTTP loopback :3102, C2P + BDT online) → Fase 2 modelo de datos (árbitro antifraude COMPARTIDO con `PaymentClaim.primaryKey`, no paralelo) → Fase 3 API v1 → Fase 4 worker de webhooks salientes → Fase 5 página `/pay` + plugin WooCommerce. **Empezar por ahí** — el README de referencias-pasarelas queda como material de fondo. **R-17 ya quedó implementado del lado interno** (2026-08-06) y el panel interno NO se toca más: todo el checkout se construye en este repo. De cara al público sigue rigiendo la regla: «plataforma de validación de pagos», nunca «pasarela».
+
 ## Reglas que no se negocian
 
 1. **`armorpay.vipsoft.cloud` (el proyecto viejo, puerto 3100) NO cambia de comportamiento.** Es la operación que factura para Armor Market. Este proyecto se construye al lado; el gateway LEE de su base, nunca modifica su camino crítico.
