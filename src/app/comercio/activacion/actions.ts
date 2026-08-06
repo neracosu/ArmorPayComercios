@@ -159,3 +159,36 @@ export async function cargarLlave(
     mensaje: "Llave guardada. La verificamos contra el banco como parte de tu certificación.",
   };
 }
+
+const escenarioSchema = z.enum(["TRAE_AFILIACION", "GESTIONAMOS"]);
+
+/**
+ * El comercio declara su escenario bancario: trae su afiliación, o nos pide
+ * gestionarla nosotros (full service). Cambia lo que su panel le pide y lo
+ * que nuestro equipo hace en el paso «enviada al banco».
+ */
+export async function elegirGestionBanco(
+  _previo: ResultadoActivacion | null,
+  datos: FormData
+): Promise<ResultadoActivacion> {
+  const session = await exigirAdminComercio();
+
+  const parsed = escenarioSchema.safeParse(datos.get("escenario"));
+  if (!parsed.success) return { ok: false, error: "Elige una de las dos opciones." };
+
+  await withSessionTenant(session, () =>
+    prisma.organization.update({
+      where: { id: session.user.organizationId! },
+      data: { gestionBanco: parsed.data },
+    })
+  );
+
+  revalidatePath("/comercio/activacion");
+  return {
+    ok: true,
+    mensaje:
+      parsed.data === "GESTIONAMOS"
+        ? "Listo: nosotros gestionamos tu afiliación con el banco. Te avisamos por acá cada avance."
+        : "Perfecto: pega tu Llave de Trabajo cuando quieras.",
+  };
+}

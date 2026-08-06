@@ -37,6 +37,7 @@ export default async function ActivacionPage() {
           status: true,
           authKeyStatus: true,
           authKeyHint: true,
+          gestionBanco: true,
           logoMime: true,
           logoUpdatedAt: true,
         },
@@ -126,6 +127,7 @@ export default async function ActivacionPage() {
             }))}
             llaveStatus={comercio?.authKeyStatus ?? "SIN_LLAVE"}
             llaveHint={comercio?.authKeyHint ?? null}
+            gestionBanco={comercio?.gestionBanco ?? null}
           />
         </div>
       </main>

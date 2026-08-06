@@ -14,6 +14,7 @@ import {
   subirRecaudo,
   registrarCuenta,
   cargarLlave,
+  elegirGestionBanco,
   type ResultadoActivacion,
 } from "./actions";
 
@@ -193,6 +194,60 @@ function Cuentas({ cuentas }: { cuentas: CuentaVista[] }) {
   );
 }
 
+/**
+ * Los DOS escenarios de llegada: trae su afiliación bancaria, o se la
+ * gestionamos nosotros. Es la primera pregunta de la sección bancaria —
+ * define qué le pedimos y qué hacemos por él.
+ */
+function EscenarioBanco({ escenario }: { escenario: string | null }) {
+  const [resultado, accion] = useFormState<ResultadoActivacion | null, FormData>(
+    elegirGestionBanco,
+    null
+  );
+
+  return (
+    <div className="mb-4 rounded-control border border-tinta-borde bg-tinta-fondo p-4">
+      <p className="text-sm font-medium text-tinta">
+        ¿Ya tienes tu afiliación de pago móvil empresarial con el banco?
+      </p>
+      <form action={accion} className="mt-3 grid gap-2 sm:grid-cols-2">
+        <button
+          type="submit"
+          name="escenario"
+          value="TRAE_AFILIACION"
+          className={`rounded-control border px-3 py-2.5 text-left text-sm transition-colors ${
+            escenario === "TRAE_AFILIACION"
+              ? "border-marca-700 bg-marca-700/10 text-marca-700"
+              : "border-tinta-borde bg-white text-tinta-suave hover:bg-tinta-fondo"
+          }`}
+        >
+          <span className="font-medium">Sí, ya la tengo</span>
+          <span className="mt-0.5 block text-xs text-tinta-tenue">
+            Pega tu llave abajo. Coordinamos con el banco la vinculación con
+            nuestra plataforma.
+          </span>
+        </button>
+        <button
+          type="submit"
+          name="escenario"
+          value="GESTIONAMOS"
+          className={`rounded-control border px-3 py-2.5 text-left text-sm transition-colors ${
+            escenario === "GESTIONAMOS"
+              ? "border-marca-700 bg-marca-700/10 text-marca-700"
+              : "border-tinta-borde bg-white text-tinta-suave hover:bg-tinta-fondo"
+          }`}
+        >
+          <span className="font-medium">No — gestiónenla por mí</span>
+          <span className="mt-0.5 block text-xs text-tinta-tenue">
+            Nosotros hacemos el trámite completo con el banco por ti.
+          </span>
+        </button>
+      </form>
+      <Aviso r={resultado} />
+    </div>
+  );
+}
+
 function Llave({ status, hint }: { status: string; hint: string | null }) {
   const [resultado, accion] = useFormState<ResultadoActivacion | null, FormData>(cargarLlave, null);
 
@@ -244,11 +299,13 @@ export default function PanelActivacion({
   cuentas,
   llaveStatus,
   llaveHint,
+  gestionBanco,
 }: {
   recaudos: RecaudoVista[];
   cuentas: CuentaVista[];
   llaveStatus: string;
   llaveHint: string | null;
+  gestionBanco: string | null;
 }) {
   return (
     <div className="space-y-8">
@@ -283,13 +340,25 @@ export default function PanelActivacion({
       <section>
         <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
           <KeyRound className="h-4 w-4 text-marca-700" aria-hidden />
-          3. Tu Llave de Trabajo del banco
+          3. Tu afiliación con el banco
         </h2>
         <p className="mb-3 mt-1 text-sm text-tinta-tenue">
-          El banco te la entrega al afiliar tu pago móvil empresarial. Si aún no
-          la tienes, te acompañamos en ese trámite.
+          Con afiliación o sin ella, te damos la solución completa desde el
+          inicio.
         </p>
-        <Llave status={llaveStatus} hint={llaveHint} />
+        <EscenarioBanco escenario={gestionBanco} />
+        {gestionBanco === "GESTIONAMOS" && llaveStatus === "SIN_LLAVE" ? (
+          <div className="rounded-control bg-ok-suave/50 px-4 py-3 text-sm leading-relaxed text-ok">
+            <p className="font-medium">Estamos gestionando tu afiliación con el banco.</p>
+            <p className="mt-1">
+              Nosotros tramitamos las credenciales y tu Llave de Trabajo. Cada
+              avance lo ves reflejado aquí — no tienes que hacer nada más en
+              este paso.
+            </p>
+          </div>
+        ) : (
+          <Llave status={llaveStatus} hint={llaveHint} />
+        )}
       </section>
     </div>
   );

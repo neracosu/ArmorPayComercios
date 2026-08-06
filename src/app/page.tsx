@@ -405,6 +405,35 @@ export default function Portada() {
       </section>
 
       {/* ── Cierre ── */}
+      {/* El alta, en cuatro pasos: que nadie llegue al registro sin saber qué sigue. */}
+      <section className="border-t border-tinta-borde bg-white px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-center font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">
+            Así es el alta
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center leading-relaxed text-tinta-suave">
+            Te registras solo y armas tu expediente desde tu panel. Nosotros
+            revisamos, verificamos con el banco y aprobamos.
+          </p>
+          <ol className="mt-10 grid gap-6 sm:grid-cols-4">
+            {[
+              { n: "1", t: "Crea tu cuenta", d: "Dos minutos, desde la web." },
+              { n: "2", t: "Sube tu expediente", d: "Documentos, cuentas y tu llave del banco." },
+              { n: "3", t: "Te aprobamos", d: "Revisión con motivos claros y verificación real contra el banco." },
+              { n: "4", t: "A cobrar", d: "Cajas validando y tu tienda cobrando por API." },
+            ].map((paso) => (
+              <li key={paso.n} className="text-center">
+                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-marca-700 font-display text-lg font-bold text-white">
+                  {paso.n}
+                </span>
+                <p className="mt-3 font-medium text-tinta">{paso.t}</p>
+                <p className="mt-1 text-sm leading-relaxed text-tinta-tenue">{paso.d}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       <section id="propuesta" className="border-t border-tinta-borde bg-tinta-fondo px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-2xl font-bold tracking-tight text-tinta sm:text-3xl">

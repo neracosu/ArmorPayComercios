@@ -71,6 +71,23 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       {/* El ciclo de activación: dónde va el alta y qué falta */}
       <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="font-display font-bold tracking-tight text-tinta">Activación</h2>
+        <p className="mt-1 text-sm font-medium">
+          {comercio.gestionBanco === "GESTIONAMOS" ? (
+            <span className="text-alerta">
+              ⚑ El comercio pidió que NOSOTROS gestionemos su afiliación bancaria
+              (credenciales y llave) — el paso «enviada al banco» es trabajo nuestro.
+            </span>
+          ) : comercio.gestionBanco === "TRAE_AFILIACION" ? (
+            <span className="text-ok">
+              El comercio trae su afiliación — falta coordinar con el banco la
+              vinculación con nuestra plataforma (paso «enviada al banco»).
+            </span>
+          ) : (
+            <span className="text-tinta-tenue">
+              El comercio aún no indicó si trae su afiliación bancaria.
+            </span>
+          )}
+        </p>
         <CicloActivacion
           organizationId={comercio.id}
           status={comercio.status}

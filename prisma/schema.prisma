@@ -74,6 +74,12 @@ model Organization {
   btCodAfiliado String?
   btC2pEnabled  Boolean @default(false)
 
+  // Los DOS escenarios de llegada: el comercio ya trae su afiliación bancaria
+  // (llave, credenciales) o nos pide gestionarla nosotros contra el banco.
+  // null = todavía no eligió. La promesa comercial es la solución completa:
+  // nadie queda fuera por no conocer el trámite bancario.
+  gestionBanco GestionBanco?
+
   // Logo del comercio: la cara de su marca en el panel de cajas y en /pay.
   // Vive EN la base (no en disco) para que el backup de la base se lleve todo.
   // Solo raster (png/jpg/webp, verificado por bytes mágicos): un SVG puede
@@ -454,6 +460,11 @@ model Lead {
 
   @@index([estado, createdAt])
   @@index([clientIp, createdAt])
+}
+
+enum GestionBanco {
+  TRAE_AFILIACION // ya tiene todo con el banco: pega su llave y sigue
+  GESTIONAMOS // la plataforma tramita la afiliación por él (full service)
 }
 
 enum RecaudoStatus {
