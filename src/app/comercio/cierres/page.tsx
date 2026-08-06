@@ -3,6 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { inicioDelDia } from "@/lib/operacion";
+import { consumoDelMes } from "@/lib/limites";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 
@@ -17,9 +18,11 @@ export default async function CierresPage() {
   if (!session) redirect("/login?callbackUrl=/comercio/cierres");
   if (session.user.role !== "ORG_ADMIN") redirect("/validar");
 
-  const { comercio, hoy, turnos, duplicados } = await withSessionTenant(session, async () => {
-    const desde = inicioDelDia();
-    const [comercio, hoy, turnos, duplicados] = await Promise.all([
+  const { comercio, hoy, turnos, duplicados, abiertos, checkoutHoy, consumo } =
+    await withSessionTenant(session, async () => {
+      const desde = inicioDelDia();
+      const [comercio, hoy, turnos, duplicados, abiertos, checkoutHoy, consumo] =
+        await Promise.all([
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
         select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
@@ -60,9 +63,14 @@ export default async function CierresPage() {
           user: { select: { name: true } },
         },
       }),
+      prisma.shift.count({ where: { status: "OPEN" } }),
+      prisma.checkoutIntent.count({
+        where: { status: "CONFIRMED", confirmedAt: { gte: desde } },
+      }),
+      consumoDelMes(session.user.organizationId!),
     ]);
-    return { comercio, hoy, turnos, duplicados };
-  });
+      return { comercio, hoy, turnos, duplicados, abiertos, checkoutHoy, consumo };
+    });
 
   return (
     <>
@@ -79,10 +87,73 @@ export default async function CierresPage() {
           Lo que cobró cada caja, turno por turno.
         </p>
 
-        <div className="mt-6 rounded-card border border-tinta-borde bg-white p-6">
-          <p className="text-sm text-tinta-tenue">Cobrado hoy en todo el negocio</p>
-          <p className="monto mt-1">Bs {bs(Number(hoy._sum.amount ?? 0))}</p>
-          <p className="mt-1 text-sm text-tinta-tenue">{hoy._count} cobro(s)</p>
+        {/* El día, de un vistazo: a esto viene el dueño. */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-card border border-tinta-borde bg-white p-5 sm:col-span-1">
+            <p className="text-sm text-tinta-tenue">Cobrado hoy</p>
+            <p className="monto mt-1">Bs {bs(Number(hoy._sum.amount ?? 0))}</p>
+            <p className="mt-1 text-sm text-tinta-tenue">{hoy._count} cobro(s)</p>
+          </div>
+          <div className="rounded-card border border-tinta-borde bg-white p-5">
+            <p className="text-sm text-tinta-tenue">Cajas trabajando ahora</p>
+            <p className="monto mt-1">{abiertos}</p>
+            <p className="mt-1 text-sm text-tinta-tenue">turno(s) abierto(s)</p>
+          </div>
+          <div className="rounded-card border border-tinta-borde bg-white p-5">
+            <p className="text-sm text-tinta-tenue">Ventas en línea hoy</p>
+            <p className="monto mt-1">{checkoutHoy}</p>
+            <p className="mt-1 text-sm text-tinta-tenue">cobro(s) por checkout</p>
+          </div>
+        </div>
+
+        {/* El medidor del plan: avisar ANTES de pasarse, nunca frenar un cobro. */}
+        <div className="mt-4 rounded-card border border-tinta-borde bg-white p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm text-tinta-tenue">
+              Consumo del mes · plan{" "}
+              <strong className="font-medium text-tinta">{consumo.plan.nombre}</strong>
+            </p>
+            <p className="text-sm tabular-nums text-tinta-suave">
+              <strong className="text-tinta">{consumo.cobros.toLocaleString("es-VE")}</strong>{" "}
+              de {consumo.incluidos.toLocaleString("es-VE")} cobros incluidos
+            </p>
+          </div>
+          <div
+            className="mt-3 h-2.5 overflow-hidden rounded-full bg-tinta-fondo"
+            role="progressbar"
+            aria-valuenow={Math.min(consumo.porcentaje, 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Consumo del plan"
+          >
+            <div
+              className={`h-full rounded-full transition-all ${
+                consumo.excedidos > 0
+                  ? "bg-error"
+                  : consumo.porcentaje >= 80
+                    ? "bg-alerta"
+                    : "bg-marca-700"
+              }`}
+              style={{ width: `${Math.min(consumo.porcentaje, 100)}%` }}
+            />
+          </div>
+          {consumo.excedidos > 0 ? (
+            <p className="mt-2.5 text-sm text-error">
+              Superaste el piso de tu plan: {consumo.excedidos.toLocaleString("es-VE")} cobro(s)
+              de excedente (${consumo.cargoExcedente.toFixed(2)} adicionales este mes). Tus
+              cajas siguen cobrando con normalidad — considera subir de plan.
+            </p>
+          ) : consumo.porcentaje >= 80 ? (
+            <p className="mt-2.5 text-sm text-alerta">
+              Vas por el {consumo.porcentaje}% de tu piso mensual. Si te pasas, el excedente se
+              factura aparte — nada se frena.
+            </p>
+          ) : (
+            <p className="mt-2.5 text-sm text-tinta-tenue">
+              {consumo.porcentaje}% del piso mensual. Pasarte nunca frena un cobro: el
+              excedente se factura aparte.
+            </p>
+          )}
         </div>
 
         {duplicados.length > 0 && (

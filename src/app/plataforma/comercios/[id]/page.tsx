@@ -68,8 +68,30 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         {comercio.rif} · {pagos} pago(s) recibido(s) · {cobros} cobro(s)
       </p>
 
+      {/* La ficha creció: anclas para no bucear. */}
+      <nav className="mt-4 flex flex-wrap gap-1.5 text-sm" aria-label="Secciones de la ficha">
+        {[
+          ["#activacion", "Activación"],
+          ["#recaudos", "Recaudos"],
+          ["#cuentas", "Cuentas"],
+          ["#llave", "Llave"],
+          ["#c2p", "C2P"],
+          ["#logo", "Logo"],
+          ["#usuarios", "Usuarios"],
+          ["#sucursales", "Sucursales"],
+        ].map(([href, texto]) => (
+          <a
+            key={href}
+            href={href}
+            className="rounded-control border border-tinta-borde bg-white px-2.5 py-1 text-tinta-suave hover:bg-tinta-fondo"
+          >
+            {texto}
+          </a>
+        ))}
+      </nav>
+
       {/* El ciclo de activación: dónde va el alta y qué falta */}
-      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+      <section id="activacion" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="font-display font-bold tracking-tight text-tinta">Activación</h2>
         <p className="mt-1 text-sm font-medium">
           {comercio.gestionBanco === "GESTIONAMOS" ? (
@@ -126,7 +148,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       </section>
 
       {/* Llave de Trabajo: es lo que hace que su validador funcione */}
-      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+      <section id="llave" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
           <KeyRound className="h-4 w-4 text-marca-700" aria-hidden />
           Llave de Trabajo del banco
@@ -168,7 +190,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       </section>
 
       {/* Afiliación C2P: el segundo método de cobro del checkout */}
-      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+      <section id="c2p" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
           <Zap className="h-4 w-4 text-marca-700" aria-hidden />
           C2P del Tesoro (Botón de Pago)
@@ -188,13 +210,13 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       </section>
 
       {/* Logo: su marca en las cajas y en la página de pago */}
-      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+      <section id="logo" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="font-display font-bold tracking-tight text-tinta">Logo</h2>
         <FormularioLogo organizationId={comercio.id} logoUrl={logoUrlDe(comercio)} />
       </section>
 
       {/* Expediente subido por el comercio */}
-      <section className="mt-6">
+      <section id="recaudos" className="mt-6 scroll-mt-4">
         <h2 className="font-display font-bold tracking-tight text-tinta">Recaudos</h2>
         {comercio.recaudos.length === 0 ? (
           <p className="mt-2 text-sm text-tinta-tenue">
@@ -213,7 +235,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       </section>
 
       {/* Cuentas */}
-      <section className="mt-6">
+      <section id="cuentas" className="mt-6 scroll-mt-4">
         <h2 className="font-display font-bold tracking-tight text-tinta">Cuentas afiliadas</h2>
         {comercio.accounts.length === 0 ? (
           <p className="mt-2 text-sm text-tinta-tenue">
@@ -247,7 +269,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       </section>
 
       {/* Usuarios */}
-      <section className="mt-8">
+      <section id="usuarios" className="mt-8 scroll-mt-4">
         <h2 className="font-display font-bold tracking-tight text-tinta">Usuarios</h2>
         <p className="mb-3 mt-1 text-sm text-tinta-tenue">
           El administrador del comercio crea sus propias cajas. Nosotros solo
@@ -278,7 +300,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         <CrearAdmin organizationId={comercio.id} slug={comercio.slug} />
       </section>
 
-      <section className="mt-8">
+      <section id="sucursales" className="mt-8 scroll-mt-4">
         <h2 className="font-display font-bold tracking-tight text-tinta">Sucursales</h2>
         <ul className="mt-3 flex flex-wrap gap-2">
           {comercio.branches.map((b) => (

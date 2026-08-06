@@ -251,6 +251,66 @@ export default function Portada() {
             tú ves todo, desde donde estés.
           </p>
         </div>
+
+        {/* Así se ve: maquetas fieles de las dos pantallas que importan.
+            No son capturas — son el mismo diseño del producto, en miniatura. */}
+        <div className="mt-12 grid gap-6 sm:grid-cols-2" aria-hidden>
+          <figure>
+            <div className="overflow-hidden rounded-card border border-tinta-borde bg-tinta-fondo shadow-sm">
+              <div className="flex items-center gap-1.5 border-b border-tinta-borde bg-white px-4 py-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-tinta-borde" />
+                <span className="h-2.5 w-2.5 rounded-full bg-tinta-borde" />
+                <span className="ml-2 text-xs text-tinta-tenue">La caja · armorpay.net</span>
+              </div>
+              <div className="p-5">
+                <p className="text-xs font-medium text-tinta-suave">
+                  Últimos dígitos de la referencia
+                </p>
+                <div className="mt-1.5 flex gap-2">
+                  <div className="flex-1 rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm tracking-widest text-tinta">
+                    789123
+                  </div>
+                  <div className="rounded-control bg-marca-700 px-3 py-2 text-sm font-medium text-white">
+                    Buscar
+                  </div>
+                </div>
+                <div className="mt-3 rounded-control bg-ok px-4 py-3 text-center text-white">
+                  <p className="font-mono text-lg font-bold tracking-tight">Bs 1.450,00</p>
+                  <p className="text-xs text-white/90">Cobro registrado</p>
+                </div>
+              </div>
+            </div>
+            <figcaption className="mt-2.5 text-center text-sm text-tinta-tenue">
+              La caja: referencia, Enter, cobrado — sin ver tu cuenta.
+            </figcaption>
+          </figure>
+          <figure>
+            <div className="overflow-hidden rounded-card border border-tinta-borde bg-tinta-fondo shadow-sm">
+              <div className="flex items-center gap-1.5 border-b border-tinta-borde bg-white px-4 py-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-tinta-borde" />
+                <span className="h-2.5 w-2.5 rounded-full bg-tinta-borde" />
+                <span className="ml-2 text-xs text-tinta-tenue">Tu página de pago · armorpay.net/pay</span>
+              </div>
+              <div className="p-5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-tinta-tenue">
+                  Estás pagando a
+                </p>
+                <p className="font-display text-sm font-bold text-tinta">Tu Comercio, C.A.</p>
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-widest text-tinta-tenue">
+                  Monto exacto
+                </p>
+                <p className="font-mono text-xl font-bold tracking-tight text-tinta">Bs 1.450,00</p>
+                <div className="mt-3 border-t-2 border-dashed border-tinta-borde" />
+                <div className="mt-3 rounded-control bg-marca-700 px-3 py-2 text-center text-sm font-medium text-white">
+                  Confirmar mi pago
+                </div>
+              </div>
+            </div>
+            <figcaption className="mt-2.5 text-center text-sm text-tinta-tenue">
+              Tu tienda en línea: el cliente confirma solo, con tu marca.
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       {/* ── Lo que nos separa del resto ── */}
