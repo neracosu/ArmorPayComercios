@@ -406,7 +406,7 @@ export default function Portada() {
               },
               {
                 icono: DollarSign,
-                titulo: "Precia en dólares, cobra en bolívares",
+                titulo: "Fija tus precios en dólares, cobra en bolívares",
                 texto:
                   "Tasa BCV con respaldo y auditoría: se congela al crear el cobro, tu carrito puede leerla por API, y quien paga con la tasa del día no rebota.",
               },

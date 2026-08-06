@@ -123,7 +123,7 @@ Content-Type: application/json
   "concepto": "Tienda X pedido 8812"  # opcional, ≤40 tras sanear
 }
 
-# ¿Precias en dólares? Manda amountUSD EN VEZ de amountVES: congelamos
+# ¿Tus precios están en dólares? Manda amountUSD EN VEZ de amountVES: congelamos
 # el monto en Bs con la tasa BCV del momento, y la validación acepta
 # también USD × tasa vigente (el que paga con la tasa de hoy no falla).
 # { "externalRef": "8812", "amountUSD": "25.00" }
@@ -214,7 +214,7 @@ El monto y el concepto salen del intent — el body nunca los lleva.`}</pre>
         <section id="rate" className="mt-12 scroll-mt-4">
           <h2 className={encabezado}>Tasa BCV</h2>
           <p className="mt-3 leading-relaxed text-tinta-suave">
-            Precia con la misma tasa con la que nosotros congelamos y validamos:
+            Fija tus precios con la misma tasa con la que nosotros congelamos y validamos:
             cero discrepancias entre tu carrito y el cobro.
           </p>
           <Metodo verbo="GET" ruta="/api/v1/exchange-rate" />

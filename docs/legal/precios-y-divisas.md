@@ -13,12 +13,12 @@
 2. **El bolívar tiene que estar exhibido.** La obligación de expresar los
    precios en Bs aplica también a medios electrónicos y tiendas en línea.
 3. **Lo que se sanciona** (SUNDDE en fiscalización activa durante 2025):
-   - usar una tasa **paralela** para preciar o facturar (multas, cierres, y
+   - usar una tasa **paralela** para fijar precios o facturar (multas, cierres, y
      hasta vía penal por especulación/usura);
    - **precios distintos según la moneda de pago** (el descuento «solo si pagas
      en dólares» está siendo sancionado);
    - promociones expresadas únicamente en divisas;
-   - preciar en una divisa y cobrar la conversión con la tasa de OTRA (p. ej.
+   - fijar el precio en una divisa y cobrar la conversión con la tasa de OTRA (p. ej.
      fijar en USD y cobrar a tasa del euro).
 4. SUNDDE publicó un **formato obligatorio (con QR) para divulgar la tasa BCV**
    en los comercios — la transparencia de la tasa es parte del cumplimiento.
@@ -36,7 +36,7 @@
 | Tasa oficial, jamás paralela | `src/lib/bcv.ts` solo consume el valor BCV; sin fuente utilizable hay **error explícito**, nunca una tasa inventada. |
 | Demostrar qué tasa se usó | `ExchangeRate` es historial-auditoría: cada intent en USD guarda `exchangeRateUsed` + `exchangeRateId`. |
 | Mismo precio en cualquier método | Cobramos **solo en bolívares** (pago móvil/C2P son VES): no hay precio-según-moneda posible, y el flujo no toca IGTF de divisas. |
-| El carrito precia con la misma tasa | `GET /api/v1/exchange-rate` expone la tasa BCV al integrador — cero incentivo a usar una paralela. |
+| El carrito fija precios con la misma tasa | `GET /api/v1/exchange-rate` expone la tasa BCV al integrador — cero incentivo a usar una paralela. |
 
 ## Lo que queda del lado del comercio (decirlo en las docs, no asumirlo)
 
