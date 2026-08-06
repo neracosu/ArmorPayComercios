@@ -190,7 +190,9 @@ model ApiEvent {                            // bitácora append-only + base del 
 
 ---
 
-## FASE 3 — API pública v1 (~3-4 días)
+## FASE 3 — API pública v1 ✅ HECHA (2026-08-06) — pendiente SOLO la E2E con dinero real
+
+> Código completo y desplegado: `api-auth.ts` (Bearer + prefix + timingSafeEqual + `withApiAuth` que abre el tenant), `api-rate-limit.ts` (persistido sobre ApiEvent: 60/min por key, 15/5min por IP cross-tenant en validación), `checkout.ts` (intentPublico/encolarWebhooks/saneos), `exec-client.ts` (SaaS→ejecutor firmado), `bancos-ve.ts` portado (0175 = «BDT (antes Bicentenario)»), los 5 endpoints, y pantalla `/comercio/api` de llaves para el ORG_ADMIN (se muestra UNA vez, máx. 5 activas). E2E sintética contra el servidor vivo: **20/20** (auth, idempotencia, saneo de concepto, sobrepago registrado, 409 con `cobradoPor`, subpago con faltante, C2P 422 sin habilitación, 400 por formato antes de llamar al banco, webhook encolado, bitácora enmascarada). **Falta la verificación de la guía con dinero real** (pago móvil Bs 1 → CONFIRMED → 409 al repetir; C2P monto mínimo → C2P0000; OTP vencido → error traducido): requiere comercio piloto con `btC2pEnabled` y a Neri del lado pagador.
 
 **Auth**: `src/lib/api-auth.ts` — `Authorization: Bearer ak_live_xxxxxxxx...`: lookup por `prefix` (con cliente crudo + `runAsPlatform("api: resolver key")`), `timingSafeEqual` del sha256, chequear `isActive` + `Organization.status === "ACTIVA"`, actualizar `lastUsedAt` best-effort, y devolver el `organizationId` para envolver TODO el handler en `runWithTenant`. Es la tercera entrada sin sesión (junto a ingesta y — Fase 5 — la página pública): el comentario de `tenant-context.ts` ya la anticipa.
 

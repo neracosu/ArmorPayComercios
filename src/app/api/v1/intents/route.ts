@@ -1,0 +1,100 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { withApiAuth, apiError, clientIpOf } from "@/lib/api-auth";
+import { rateLimitPorKey, registrarApiEvent } from "@/lib/api-rate-limit";
+import { intentPublico, montoVES, sanearConcepto } from "@/lib/checkout";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * POST /api/v1/intents — crea una intención de cobro.
+ *
+ * El monto lo fija el comercio ACÁ, server-to-server, y de acá en adelante es
+ * la única verdad: la validación compara contra esto, nunca contra lo que
+ * declare el cliente final en su navegador.
+ *
+ * `Idempotency-Key` es obligatorio: el carrito reintenta ante un timeout y el
+ * unique compuesto [organizationId, idempotencyKey] garantiza que el reintento
+ * devuelve el MISMO intent en vez de crear otro cobro.
+ */
+
+const VIGENCIA_MIN = 30;
+
+const bodySchema = z.object({
+  externalRef: z.string().trim().min(1).max(120),
+  amountVES: z.union([z.string(), z.number()]),
+  concepto: z.string().trim().min(1).max(120).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  return withApiAuth(req, async (auth) => {
+    const freno = await rateLimitPorKey(auth.apiKeyId);
+    if (freno.limited) {
+      return NextResponse.json(
+        { code: "RATE_LIMITED", message: "Demasiadas peticiones. Espera y reintenta." },
+        { status: 429, headers: { "Retry-After": String(freno.retryAfterS) } }
+      );
+    }
+
+    const idempotencyKey = req.headers.get("idempotency-key")?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 120) {
+      return apiError(
+        400,
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "Manda el header Idempotency-Key (único por pedido, ≤120 chars)."
+      );
+    }
+
+    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return apiError(400, "VALIDATION", "Body inválido.", { issues: parsed.error.issues });
+    }
+    const monto = montoVES(parsed.data.amountVES);
+    if (!monto) {
+      return apiError(
+        400,
+        "INVALID_AMOUNT",
+        "amountVES debe ser un monto positivo con máximo 2 decimales (ej. \"1250.50\")."
+      );
+    }
+    const concepto =
+      sanearConcepto(parsed.data.concepto ?? `Pedido ${parsed.data.externalRef}`) || "Pago";
+
+    const data = {
+      organizationId: auth.organizationId,
+      apiKeyId: auth.apiKeyId,
+      externalRef: parsed.data.externalRef,
+      amountVES: monto,
+      concepto,
+      idempotencyKey,
+      expiresAt: new Date(Date.now() + VIGENCIA_MIN * 60_000),
+    };
+
+    try {
+      const intent = await prisma.checkoutIntent.create({ data });
+      await registrarApiEvent({
+        organizationId: auth.organizationId,
+        apiKeyId: auth.apiKeyId,
+        intentId: intent.id,
+        action: "intent_created",
+        detail: `externalRef=${intent.externalRef} monto=${monto.toFixed(2)}`,
+        clientIp: clientIpOf(req),
+      });
+      return NextResponse.json({ intent: intentPublico(intent) }, { status: 201 });
+    } catch (e) {
+      if ((e as { code?: string }).code !== "P2002") throw e;
+      // Reintento del carrito: devolver el intent original, no crear otro.
+      const existente = await prisma.checkoutIntent.findUnique({
+        where: {
+          organizationId_idempotencyKey: {
+            organizationId: auth.organizationId,
+            idempotencyKey,
+          },
+        },
+      });
+      if (!existente) throw e; // carrera rarísima: que suba como 500
+      return NextResponse.json({ intent: intentPublico(existente) }, { status: 200 });
+    }
+  });
+}
