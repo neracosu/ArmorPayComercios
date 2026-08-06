@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Copy,
   Loader2,
+  ShieldCheck,
   Smartphone,
   TimerReset,
 } from "lucide-react";
@@ -84,6 +85,38 @@ function BotonAccion({ children }: { children: React.ReactNode }) {
       {pending ? "Verificando con el banco…" : children}
     </button>
   );
+}
+
+/**
+ * El CTA con su señal de confianza pegada (donde sube la ansiedad, ahí va el
+ * mensaje) y fijo al fondo del viewport en pantallas cortas.
+ */
+function ZonaAccion({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="sticky bottom-0 -mx-1 mt-4 rounded-t-control bg-white px-1 pb-2 pt-2 sm:static sm:m-0 sm:p-0 sm:pt-4">
+      {children}
+      <p className="mt-2.5 flex items-start justify-center gap-1.5 text-xs leading-relaxed text-tinta-tenue">
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" aria-hidden />
+        <span>
+          Verificamos directo con el banco. Nunca te pedimos la clave de tu
+          banca en línea.
+        </span>
+      </p>
+    </div>
+  );
+}
+
+/** Página vencida: el carrito que nos embebe también tiene que enterarse. */
+function AvisoVencido({ intentId, externalRef }: { intentId: string; externalRef: string }) {
+  useEffect(() => {
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        { armorpay: { event: "expired", intentId, externalRef } },
+        "*"
+      );
+    }
+  }, [intentId, externalRef]);
+  return null;
 }
 
 function AvisoError({ resultado }: { resultado: ResultadoPago }) {
@@ -200,9 +233,9 @@ function PanelReferencia({
         <p className="mt-1.5 text-xs text-tinta-tenue">
           Está en el comprobante que te dio tu banco al pagar.
         </p>
-        <div className="mt-4">
+        <ZonaAccion>
           <BotonAccion>Confirmar mi pago</BotonAccion>
-        </div>
+        </ZonaAccion>
       </form>
 
       {resultado && !resultado.ok && <AvisoError resultado={resultado} />}
@@ -344,9 +377,9 @@ function PanelC2p({
           />
 
           {restante > 0 ? (
-            <div className="mt-4">
+            <ZonaAccion>
               <BotonAccion>Pagar Bs {bolivares(intent.amountVES)}</BotonAccion>
-            </div>
+            </ZonaAccion>
           ) : (
             <button
               type="button"
@@ -391,6 +424,7 @@ export default function PagoPublico({ intent, comercio, c2pDisponible, bancosC2p
           <Confirmado intent={confirmado.intent} sobrepago={confirmado.sobrepago} />
         ) : !operable ? (
           <div className="px-6 py-10 text-center">
+            <AvisoVencido intentId={intent.id} externalRef={intent.externalRef} />
             <p className="font-display text-xl font-bold text-tinta">Este link de pago venció</p>
             <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-tinta-tenue">
               Vuelve a la tienda y genera el pago de nuevo. Si ya pagaste, tu

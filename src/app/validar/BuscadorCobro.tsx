@@ -34,14 +34,19 @@ function BotonBuscar() {
   );
 }
 
-function BotonCobrar({ duplicado }: { duplicado: boolean }) {
+function BotonCobrar({ duplicado, conFoco = false }: { duplicado: boolean; conFoco?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className={`inline-flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-60 ${
-        duplicado ? "bg-alerta hover:brightness-90" : "bg-ok hover:brightness-90"
+      // Resultado único → el foco salta al botón: referencia, Enter, Enter.
+      // La cajera cobra sin tocar el mouse.
+      autoFocus={conFoco}
+      className={`inline-flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${
+        duplicado
+          ? "bg-alerta hover:brightness-90 focus-visible:ring-alerta"
+          : "bg-ok hover:brightness-90 focus-visible:ring-ok"
       }`}
     >
       {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
@@ -51,7 +56,7 @@ function BotonCobrar({ duplicado }: { duplicado: boolean }) {
 }
 
 /** Una fila de pago con su acción de cobro y su propia alarma. */
-function FilaPago({ pago, hayTurno }: { pago: any; hayTurno: boolean }) {
+function FilaPago({ pago, hayTurno, unico }: { pago: any; hayTurno: boolean; unico: boolean }) {
   const [estado, accion] = useFormState<ResultadoCobro | null, FormData>(cobrar, null);
   const [insistir, setInsistir] = useState(false);
 
@@ -61,12 +66,13 @@ function FilaPago({ pago, hayTurno }: { pago: any; hayTurno: boolean }) {
     pago.cobrado ?? (estado && !estado.ok ? estado.yaCobrado ?? null : null);
 
   if (estado?.ok) {
+    // El "cha-ching" del negocio: inequívoco desde el otro lado del mostrador.
     return (
-      <li className="flex items-center gap-3 bg-ok-suave/50 px-5 py-4">
-        <Check className="h-5 w-5 shrink-0 text-ok" aria-hidden />
-        <p className="text-sm font-medium text-ok">
-          Cobro registrado{estado.duplicado ? " como duplicado, queda para revisión" : ""} · Bs{" "}
-          {bolivares(pago.monto)}
+      <li className="bg-ok px-5 py-6 text-center text-white">
+        <Check className="mx-auto h-10 w-10" strokeWidth={3} aria-hidden />
+        <p className="monto mt-2 text-2xl text-white">Bs {bolivares(pago.monto)}</p>
+        <p className="mt-1 text-sm font-medium text-white/90">
+          Cobro registrado{estado.duplicado ? " como duplicado — queda para revisión" : ""}
         </p>
       </li>
     );
@@ -144,7 +150,7 @@ function FilaPago({ pago, hayTurno }: { pago: any; hayTurno: boolean }) {
               Cobrar igual
             </button>
           ) : (
-            <BotonCobrar duplicado={Boolean(yaCobrado)} />
+            <BotonCobrar duplicado={Boolean(yaCobrado)} conFoco={unico && !yaCobrado} />
           )}
         </form>
       )}
@@ -157,6 +163,22 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
 
   return (
     <>
+      {/* La cajera tiene que enterarse ANTES de buscar, no cuando el cobro
+          falle con un cliente esperando. */}
+      {!hayTurno && (
+        <p className="mb-4 flex items-start gap-2 rounded-control bg-alerta-suave px-4 py-3 text-sm text-alerta">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            <strong>No tienes turno abierto.</strong> Puedes buscar pagos, pero
+            para cobrar primero{" "}
+            <a href="/turno" className="font-medium underline">
+              abre tu turno
+            </a>
+            .
+          </span>
+        </p>
+      )}
+
       <form action={accion} className="flex gap-3">
         <div className="flex-1">
           <label htmlFor="referencia" className="mb-1.5 block text-sm font-medium text-tinta-suave">
@@ -171,6 +193,10 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
             required
             autoFocus
             placeholder="123456"
+            onKeyDown={(e) => {
+              // Esc limpia y deja el campo listo para el siguiente cliente.
+              if (e.key === "Escape") (e.target as HTMLInputElement).value = "";
+            }}
             className="w-full rounded-control border border-tinta-borde bg-white px-4 py-3 text-lg tracking-wider text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
           />
         </div>
@@ -199,7 +225,12 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
       {resultado?.ok && resultado.pagos.length > 0 && (
         <ul className="mt-6 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
           {resultado.pagos.map((p) => (
-            <FilaPago key={p.id} pago={p} hayTurno={hayTurno} />
+            <FilaPago
+              key={p.id}
+              pago={p}
+              hayTurno={hayTurno}
+              unico={hayTurno && resultado.pagos.length === 1}
+            />
           ))}
         </ul>
       )}

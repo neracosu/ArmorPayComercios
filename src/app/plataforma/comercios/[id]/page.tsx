@@ -6,6 +6,7 @@ import { logoUrlDe } from "@/lib/logo";
 import CrearAdmin from "./CrearAdmin";
 import { FormularioLlave, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
+import CicloActivacion from "./CicloActivacion";
 
 export const dynamic = "force-dynamic";
 
@@ -60,9 +61,47 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         {comercio.razonSocial}
       </h1>
       <p className="mt-1 text-sm text-tinta-tenue">
-        {comercio.rif} · {comercio.status.toLowerCase().replace(/_/g, " ")} · {pagos} pago(s)
-        recibido(s) · {cobros} cobro(s)
+        {comercio.rif} · {pagos} pago(s) recibido(s) · {cobros} cobro(s)
       </p>
+
+      {/* El ciclo de activación: dónde va el alta y qué falta */}
+      <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="font-display font-bold tracking-tight text-tinta">Activación</h2>
+        <CicloActivacion
+          organizationId={comercio.id}
+          status={comercio.status}
+          checklist={[
+            {
+              etiqueta: `Cuenta bancaria activa (${comercio.accounts.filter((a) => a.isActive).length})`,
+              listo: comercio.accounts.some((a) => a.isActive),
+              requerido: true,
+            },
+            {
+              etiqueta:
+                comercio.authKeyStatus === "VERIFICADA"
+                  ? "Llave de Trabajo verificada"
+                  : `Llave de Trabajo (${comercio.authKeyStatus.toLowerCase().replace(/_/g, " ")})`,
+              listo: comercio.authKeyStatus === "VERIFICADA",
+              requerido: true,
+            },
+            {
+              etiqueta: "Usuario administrador creado",
+              listo: comercio.users.length > 0,
+              requerido: true,
+            },
+            {
+              etiqueta: comercio.btC2pEnabled
+                ? "C2P habilitado"
+                : comercio.btCodAfiliado
+                  ? "C2P: afiliación cargada, sin habilitar"
+                  : "C2P del Tesoro",
+              listo: comercio.btC2pEnabled,
+              requerido: false,
+            },
+            { etiqueta: "Logo cargado", listo: Boolean(comercio.logoMime), requerido: false },
+          ]}
+        />
+      </section>
 
       {/* Llave de Trabajo: es lo que hace que su validador funcione */}
       <section className="mt-6 rounded-card border border-tinta-borde bg-white p-5">

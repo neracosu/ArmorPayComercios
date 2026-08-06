@@ -399,3 +399,93 @@ export async function subirLogoComercio(
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   return { ok: true, mensaje: "Logo guardado. Ya se ve en sus cajas y en su página de pago." };
 }
+
+// ── Ciclo de activación del comercio ────────────────────────────────────────
+
+/**
+ * El orden del ciclo es fijo; avanzar es SIEMPRE al paso siguiente. Los
+ * estados terminales laterales (RECHAZADA, SUSPENDIDA) tienen sus acciones
+ * aparte. Sin saltos: si un comercio "ya está listo", igual pasa por cada
+ * paso — cada uno deja constancia de una verificación real.
+ */
+const CICLO: Array<{ de: string; a: string; etiqueta: string }> = [
+  { de: "REGISTRADA", a: "RECAUDOS_COMPLETOS", etiqueta: "Marcar recaudos completos" },
+  { de: "RECAUDOS_COMPLETOS", a: "ENVIADA_AL_BANCO", etiqueta: "Marcar solicitud enviada al banco" },
+  { de: "ENVIADA_AL_BANCO", a: "CERTIFICACION", etiqueta: "El banco afilió — pasar a certificación" },
+  { de: "CERTIFICACION", a: "ACTIVA", etiqueta: "Activar el comercio" },
+];
+
+export async function avanzarEstadoComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+  const organizationId = String(datos.get("organizationId") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      status: true,
+      authKeyStatus: true,
+      _count: { select: { accounts: { where: { isActive: true } }, users: true } },
+    },
+  });
+  if (!org) return { ok: false, error: "Ese comercio no existe." };
+
+  const paso = CICLO.find((p) => p.de === org.status);
+  if (!paso) {
+    return { ok: false, error: `Desde ${org.status.toLowerCase()} no hay paso siguiente.` };
+  }
+
+  // La activación es el único paso con requisitos duros: sin cuenta activa no
+  // ve pagos, y sin llave VERIFICADA su validación en vivo no funciona. Que
+  // el botón lo diga acá y no una caja fallando en producción.
+  if (paso.a === "ACTIVA") {
+    const faltas: string[] = [];
+    if (org._count.accounts === 0) faltas.push("una cuenta bancaria activa");
+    if (org.authKeyStatus !== "VERIFICADA") faltas.push("la Llave de Trabajo verificada (echo-test)");
+    if (org._count.users === 0) faltas.push("el usuario administrador");
+    if (faltas.length > 0) {
+      return { ok: false, error: `Para activar falta: ${faltas.join(", ")}.` };
+    }
+  }
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { status: paso.a as never },
+  });
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  revalidatePath("/plataforma/comercios");
+  return {
+    ok: true,
+    mensaje:
+      paso.a === "ACTIVA"
+        ? "Comercio ACTIVO: sus cajas ya pueden cobrar y su API ya responde."
+        : `Estado: ${paso.a.toLowerCase().replace(/_/g, " ")}.`,
+  };
+}
+
+/** Rechazo antes de activar (el banco negó la afiliación, o no califica). */
+export async function rechazarComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+  const organizationId = String(datos.get("organizationId") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { status: true },
+  });
+  if (!org) return { ok: false, error: "Ese comercio no existe." };
+  if (org.status === "ACTIVA" || org.status === "SUSPENDIDA") {
+    return { ok: false, error: "Un comercio activo se suspende, no se rechaza." };
+  }
+
+  await db.organization.update({ where: { id: organizationId }, data: { status: "RECHAZADA" } });
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  revalidatePath("/plataforma/comercios");
+  return { ok: true, mensaje: "Comercio rechazado." };
+}
