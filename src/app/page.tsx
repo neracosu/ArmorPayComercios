@@ -122,11 +122,17 @@ export default function Portada() {
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
-            href="/propuesta"
+            href="/registro"
             className="inline-flex items-center gap-2 rounded-control bg-marca-700 px-5 py-3 font-medium text-white transition-colors hover:bg-marca-900"
           >
-            Pedir una propuesta
+            Crear la cuenta de mi comercio
             <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+          <Link
+            href="/propuesta"
+            className="rounded-control border border-tinta-borde px-5 py-3 font-medium text-tinta-suave transition-colors hover:bg-tinta-fondo"
+          >
+            Pedir una propuesta
           </Link>
           <a
             href="#como-funciona"

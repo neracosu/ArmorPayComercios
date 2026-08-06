@@ -55,10 +55,13 @@ export default function CicloActivacion({
   organizationId,
   status,
   checklist,
+  puedeActivar,
 }: {
   organizationId: string;
   status: string;
   checklist: ItemChecklist[];
+  /** false = revisora: prepara todo, pero el paso final es del admin. */
+  puedeActivar: boolean;
 }) {
   const [resultado, avanzar] = useFormState<Resultado | null, FormData>(avanzarEstadoComercio, null);
   const [rechazo, rechazar] = useFormState<Resultado | null, FormData>(rechazarComercio, null);
@@ -124,29 +127,37 @@ export default function CicloActivacion({
       {/* Acciones */}
       {SIGUIENTE[status] && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <form action={avanzar}>
-            <input type="hidden" name="organizationId" value={organizationId} />
-            <BotonAvanzar etiqueta={SIGUIENTE[status]} />
-          </form>
-          <form action={rechazar}>
-            <input type="hidden" name="organizationId" value={organizationId} />
-            {confirmarRechazo ? (
-              <button
-                type="submit"
-                className="rounded-control bg-error px-3 py-2.5 text-sm font-medium text-white hover:brightness-90"
-              >
-                Confirmar rechazo
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmarRechazo(true)}
-                className="rounded-control border border-error/40 px-3 py-2.5 text-sm font-medium text-error hover:bg-error-suave"
-              >
-                Rechazar
-              </button>
-            )}
-          </form>
+          {status === "CERTIFICACION" && !puedeActivar ? (
+            <p className="text-sm text-tinta-tenue">
+              Expediente listo para activar — lo activa un administrador de plataforma.
+            </p>
+          ) : (
+            <form action={avanzar}>
+              <input type="hidden" name="organizationId" value={organizationId} />
+              <BotonAvanzar etiqueta={SIGUIENTE[status]} />
+            </form>
+          )}
+          {puedeActivar && (
+            <form action={rechazar}>
+              <input type="hidden" name="organizationId" value={organizationId} />
+              {confirmarRechazo ? (
+                <button
+                  type="submit"
+                  className="rounded-control bg-error px-3 py-2.5 text-sm font-medium text-white hover:brightness-90"
+                >
+                  Confirmar rechazo
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmarRechazo(true)}
+                  className="rounded-control border border-error/40 px-3 py-2.5 text-sm font-medium text-error hover:bg-error-suave"
+                >
+                  Rechazar
+                </button>
+              )}
+            </form>
+          )}
         </div>
       )}
 

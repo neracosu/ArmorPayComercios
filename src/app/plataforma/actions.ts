@@ -29,6 +29,20 @@ async function exigirPlataforma() {
   return session;
 }
 
+/**
+ * Permiso de REVISIÓN: el trabajo de la revisora de expedientes (y del
+ * admin, que puede todo). Alcanza para revisar recaudos, aprobar cuentas y
+ * avanzar el ciclo — NUNCA para activar, tocar llaves ni crear usuarios.
+ */
+async function exigirRevision() {
+  const session = await getVerifiedSession();
+  const rol = session?.user.role;
+  if (!session || (rol !== "PLATFORM_ADMIN" && rol !== "PLATFORM_REVIEWER")) {
+    throw new Error("No autorizado");
+  }
+  return session;
+}
+
 export type Resultado =
   | { ok: true; mensaje: string; credenciales?: { usuario: string; password: string } }
   | { ok: false; error: string };
@@ -419,7 +433,7 @@ export async function avanzarEstadoComercio(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirRevision();
   const organizationId = String(datos.get("organizationId") ?? "");
   if (!organizationId) return { ok: false, error: "Falta el comercio." };
 
@@ -442,6 +456,10 @@ export async function avanzarEstadoComercio(
   // ve pagos, y sin llave VERIFICADA su validación en vivo no funciona. Que
   // el botón lo diga acá y no una caja fallando en producción.
   if (paso.a === "ACTIVA") {
+    // La revisora prepara; ACTIVAR es decisión de un administrador.
+    if (session.user.role !== "PLATFORM_ADMIN") {
+      return { ok: false, error: "Activar un comercio es decisión de un administrador de plataforma." };
+    }
     const faltas: string[] = [];
     if (org._count.accounts === 0) faltas.push("una cuenta bancaria activa");
     if (org.authKeyStatus !== "VERIFICADA") faltas.push("la Llave de Trabajo verificada (echo-test)");
@@ -488,4 +506,143 @@ export async function rechazarComercio(
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
   return { ok: true, mensaje: "Comercio rechazado." };
+}
+
+// ── Revisión del expediente y aprobación de cuentas ─────────────────────────
+
+export async function revisarRecaudo(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirRevision();
+
+  const id = String(datos.get("id") ?? "");
+  const veredicto = String(datos.get("veredicto") ?? "");
+  const nota = String(datos.get("nota") ?? "").trim().slice(0, 500);
+  if (!id || (veredicto !== "aprobar" && veredicto !== "rechazar")) {
+    return { ok: false, error: "Falta el documento o el veredicto." };
+  }
+  if (veredicto === "rechazar" && !nota) {
+    return { ok: false, error: "Un rechazo lleva SIEMPRE el motivo: el comercio tiene que saber qué corregir." };
+  }
+
+  const r = await db.recaudo.update({
+    where: { id },
+    data: { status: veredicto === "aprobar" ? "APROBADO" : "RECHAZADO", nota: nota || null },
+    select: { organizationId: true },
+  });
+
+  revalidatePath(`/plataforma/comercios/${r.organizationId}`);
+  return { ok: true, mensaje: veredicto === "aprobar" ? "Documento aprobado." : "Documento rechazado con motivo." };
+}
+
+/** Aprueba una cuenta registrada por el comercio: desde acá ve pagos. */
+export async function aprobarCuenta(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirRevision();
+
+  const id = String(datos.get("id") ?? "");
+  if (!id) return { ok: false, error: "Falta la cuenta." };
+
+  const r = await db.bankAccount.update({
+    where: { id },
+    data: { isActive: true },
+    select: { organizationId: true, accountNumber: true },
+  });
+
+  revalidatePath(`/plataforma/comercios/${r.organizationId}`);
+  return {
+    ok: true,
+    mensaje: `Cuenta …${r.accountNumber.slice(-4)} aprobada: la ingesta ya le atribuye pagos.`,
+  };
+}
+
+// ── Usuarios internos de la plataforma (empleados nuestros) ─────────────────
+
+const usuarioInternoSchema = z.object({
+  nombre: z.string().trim().min(2, "Falta el nombre").max(120),
+  usuario: usernameSchema,
+  rol: z.enum(["PLATFORM_ADMIN", "PLATFORM_REVIEWER"]),
+});
+
+/**
+ * Crea un empleado de la plataforma. Solo un administrador puede: crear
+ * usuarios internos ES el poder de la plataforma. La contraseña se genera
+ * larga (no es una caja: es alguien con acceso a datos de todos los
+ * comercios) y se muestra UNA vez.
+ */
+export async function crearUsuarioInterno(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const parsed = usuarioInternoSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const usuario = normalizeUsername(parsed.data.usuario);
+  const password = generarPassword(12);
+
+  try {
+    await db.user.create({
+      data: {
+        organizationId: null, // interno: no pertenece a ningún comercio
+        username: usuario,
+        passwordHash: await bcrypt.hash(password, 10),
+        name: parsed.data.nombre,
+        role: parsed.data.rol,
+      },
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") {
+      return { ok: false, error: "Ese nombre de usuario ya existe." };
+    }
+    throw e;
+  }
+
+  revalidatePath("/plataforma/usuarios");
+  return {
+    ok: true,
+    mensaje:
+      parsed.data.rol === "PLATFORM_REVIEWER"
+        ? `${parsed.data.nombre} creada como revisora de expedientes.`
+        : `${parsed.data.nombre} creado como administrador de plataforma.`,
+    credenciales: { usuario, password },
+  };
+}
+
+/** Activa/desactiva un usuario INTERNO. Nadie se desactiva a sí mismo. */
+export async function alternarUsuarioInterno(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  const session = await exigirPlataforma();
+
+  const id = String(datos.get("id") ?? "");
+  if (!id) return { ok: false, error: "Falta el usuario." };
+  if (id === session.user.id) {
+    return { ok: false, error: "No puedes desactivarte a ti mismo." };
+  }
+
+  const objetivo = await db.user.findUnique({
+    where: { id },
+    select: { organizationId: true, isActive: true, tokenVersion: true },
+  });
+  if (!objetivo || objetivo.organizationId !== null) {
+    return { ok: false, error: "Ese usuario no es interno de la plataforma." };
+  }
+
+  await db.user.update({
+    where: { id },
+    data: {
+      isActive: !objetivo.isActive,
+      // Desactivar mata las sesiones YA, no en la próxima expiración del JWT.
+      ...(objetivo.isActive ? { tokenVersion: objetivo.tokenVersion + 1 } : {}),
+    },
+  });
+
+  revalidatePath("/plataforma/usuarios");
+  return { ok: true, mensaje: objetivo.isActive ? "Usuario desactivado y sesiones cerradas." : "Usuario reactivado." };
 }

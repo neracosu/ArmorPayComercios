@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { ArrowRight, Building2, Inbox, KeyRound, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getVerifiedSession } from "@/lib/session-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ const ESTADO_TEXTO: Record<string, string> = {
 };
 
 export default async function ResumenPage() {
+  // Sección administrativa: la revisora no entra ni tecleando la URL.
+  const session = await getVerifiedSession();
+  if (session?.user.role !== "PLATFORM_ADMIN") redirect("/plataforma/comercios");
+
   const [solicitudes, comercios, usuarios, sinLlave, porEstado, cobrosHoy] = await Promise.all([
     db.lead.count({ where: { estado: { in: ["NUEVO", "CONTACTADO"] } } }),
     db.organization.count(),

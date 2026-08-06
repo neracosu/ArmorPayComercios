@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { getVerifiedSession } from "@/lib/session-guard";
+import { CrearInterno, BotonAlternarInterno } from "./GestionInternos";
 
 export const dynamic = "force-dynamic";
 
@@ -7,11 +10,16 @@ const db = new PrismaClient();
 
 const ROL: Record<string, { texto: string; clase: string }> = {
   PLATFORM_ADMIN: { texto: "Plataforma", clase: "bg-tinta text-white" },
+  PLATFORM_REVIEWER: { texto: "Revisora", clase: "bg-marca-700 text-white" },
   ORG_ADMIN: { texto: "Administrador", clase: "bg-marca-100 text-marca-900" },
   OPERATOR: { texto: "Caja", clase: "bg-tinta-fondo text-tinta-tenue" },
 };
 
 export default async function UsuariosPage() {
+  // Sección administrativa: la revisora no entra ni tecleando la URL.
+  const session = await getVerifiedSession();
+  if (session?.user.role !== "PLATFORM_ADMIN") redirect("/plataforma/comercios");
+
   const usuarios = await db.user.findMany({
     orderBy: [{ role: "asc" }, { username: "asc" }],
     take: 500,
@@ -32,6 +40,8 @@ export default async function UsuariosPage() {
         Todos los usuarios de la plataforma, de todos los comercios. Las cajas
         las crea cada comercio; acá se ven para auditar.
       </p>
+
+      <CrearInterno />
 
       <ul className="mt-6 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
         {usuarios.map((u) => (
@@ -65,6 +75,9 @@ export default async function UsuariosPage() {
             >
               {ROL[u.role]?.texto ?? u.role}
             </span>
+            {!u.organization && u.id !== session?.user.id && (
+              <BotonAlternarInterno userId={u.id} activo={u.isActive} />
+            )}
           </li>
         ))}
       </ul>

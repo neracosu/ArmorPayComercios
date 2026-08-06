@@ -21,6 +21,7 @@ datasource db {
 
 enum Role {
   PLATFORM_ADMIN // nosotros: operamos la plataforma
+  PLATFORM_REVIEWER // empleado nuestro: revisa expedientes y guía las altas — sin poderes de activación ni de llaves
   ORG_ADMIN // dueño del comercio
   OPERATOR // caja
 }
@@ -94,6 +95,7 @@ model Organization {
   apiKeys          ApiKey[]
   checkoutIntents  CheckoutIntent[]
   webhookEndpoints WebhookEndpoint[]
+  recaudos         Recaudo[]
 
   @@index([status])
 }
@@ -118,6 +120,7 @@ model User {
   username       String  @unique
   passwordHash   String
   name           String
+  email          String? // contacto del registro self-service; las cajas no lo llevan
   role           Role    @default(OPERATOR)
   isActive       Boolean @default(true)
   tokenVersion   Int     @default(0) // bump = invalida todos los JWT del user al instante
@@ -451,6 +454,37 @@ model Lead {
 
   @@index([estado, createdAt])
   @@index([clientIp, createdAt])
+}
+
+enum RecaudoStatus {
+  PENDIENTE // subido, esperando nuestra revisión
+  APROBADO
+  RECHAZADO // con nota del motivo — el comercio puede volver a subir
+}
+
+/// Documento del expediente de afiliación (RIF, registro mercantil, cédula
+/// del representante…). El comercio los sube desde su panel de activación y
+/// nosotros los revisamos desde la ficha. Con `organizationId` → protegido
+/// solo por la extensión. El archivo vive en la base, igual que el logo:
+/// el backup se lleva el expediente completo.
+model Recaudo {
+  id             String        @id @default(cuid())
+  organizationId String
+  tipo           String // rif | registro_mercantil | cedula_representante | otro
+  nombre         String // nombre del archivo original, para reconocerlo
+  archivo        Bytes         @db.MediumBlob
+  mime           String
+  status         RecaudoStatus @default(PENDIENTE)
+  nota           String?       @db.Text // motivo de rechazo / observación nuestra
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Un documento por tipo: volver a subir REEMPLAZA (el expediente no acumula
+  // versiones viejas de un RIF vencido).
+  @@unique([organizationId, tipo])
+  @@index([organizationId, createdAt])
 }
 
 /// Config de plataforma (no de tenant). NO lleva organizationId a propósito.

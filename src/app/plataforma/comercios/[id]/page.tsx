@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
+import { getVerifiedSession } from "@/lib/session-guard";
 import { ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import CrearAdmin from "./CrearAdmin";
 import { FormularioLlave, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 import CicloActivacion from "./CicloActivacion";
+import { FilaRecaudoRevision, FilaCuentaPorAprobar } from "./RevisionExpediente";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ const LLAVE: Record<string, { texto: string; clase: string }> = {
 };
 
 export default async function ComercioPage({ params }: { params: { id: string } }) {
+  const session = await getVerifiedSession();
   const comercio = await db.organization.findUnique({
     where: { id: params.id },
     include: {
@@ -33,6 +36,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       accounts: { orderBy: { accountNumber: "asc" } },
       branches: { orderBy: { name: "asc" } },
       keyEvents: { orderBy: { createdAt: "desc" }, take: 10 },
+      recaudos: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!comercio) notFound();
@@ -70,6 +74,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         <CicloActivacion
           organizationId={comercio.id}
           status={comercio.status}
+          puedeActivar={session?.user.role === "PLATFORM_ADMIN"}
           checklist={[
             {
               etiqueta: `Cuenta bancaria activa (${comercio.accounts.filter((a) => a.isActive).length})`,
@@ -171,6 +176,25 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         <FormularioLogo organizationId={comercio.id} logoUrl={logoUrlDe(comercio)} />
       </section>
 
+      {/* Expediente subido por el comercio */}
+      <section className="mt-6">
+        <h2 className="font-display font-bold tracking-tight text-tinta">Recaudos</h2>
+        {comercio.recaudos.length === 0 ? (
+          <p className="mt-2 text-sm text-tinta-tenue">
+            El comercio no ha subido documentos todavía.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
+            {comercio.recaudos.map((r) => (
+              <FilaRecaudoRevision
+                key={r.id}
+                recaudo={{ id: r.id, tipo: r.tipo, nombre: r.nombre, status: r.status, nota: r.nota }}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Cuentas */}
       <section className="mt-6">
         <h2 className="font-display font-bold tracking-tight text-tinta">Cuentas afiliadas</h2>
@@ -180,12 +204,26 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
-            {comercio.accounts.map((a) => (
-              <li key={a.id} className="flex items-center justify-between px-5 py-3 text-sm">
-                <span className="font-mono text-tinta">{a.accountNumber}</span>
-                <span className="text-tinta-tenue">{a.alias}</span>
-              </li>
-            ))}
+            {comercio.accounts.map((a) =>
+              a.isActive ? (
+                <li key={a.id} className="flex items-center justify-between px-5 py-3 text-sm">
+                  <span className="font-mono text-tinta">{a.accountNumber}</span>
+                  <span className="text-tinta-tenue">
+                    {a.banco} · {a.alias}
+                  </span>
+                </li>
+              ) : (
+                <FilaCuentaPorAprobar
+                  key={a.id}
+                  cuenta={{
+                    id: a.id,
+                    accountNumber: a.accountNumber,
+                    banco: a.banco,
+                    alias: a.alias,
+                  }}
+                />
+              )
+            )}
           </ul>
         )}
         <FormularioCuenta organizationId={comercio.id} />

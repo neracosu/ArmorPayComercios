@@ -18,7 +18,7 @@ import { runWithTenant, runAsPlatform } from "./tenant-context";
 const guardDb = new PrismaClient();
 
 const ADMIN_MAX_SESSION_S = 60 * 60 * 8;
-const ADMIN_ROLES = new Set(["PLATFORM_ADMIN", "ORG_ADMIN"]);
+const ADMIN_ROLES = new Set(["PLATFORM_ADMIN", "PLATFORM_REVIEWER", "ORG_ADMIN"]);
 
 export async function getVerifiedSession() {
   const session = await getServerSession(authOptions);

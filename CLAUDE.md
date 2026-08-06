@@ -89,7 +89,9 @@ Es la excepción explícita a la convención de "sin tests" del stack VPS. Cubre
 
 ## Roles
 
-`PLATFORM_ADMIN` (nosotros, sin organización) · `ORG_ADMIN` (dueño del comercio) · `OPERATOR` (caja).
+`PLATFORM_ADMIN` (nosotros, sin organización) · `PLATFORM_REVIEWER` (empleado nuestro, sin organización: revisa recaudos, aprueba cuentas y avanza el ciclo de activación — NO activa comercios, NO toca llaves, NO crea usuarios; su nav solo ve Solicitudes y Comercios) · `ORG_ADMIN` (dueño del comercio) · `OPERATOR` (caja).
+
+**Onboarding (2026-08-06)**: hay DOS caminos de alta — el self-service (`/registro` público → org `REGISTRADA` + admin propio → el comercio sube recaudos/cuentas/llave en `/comercio/activacion` y las cuentas nacen `isActive: false` hasta aprobarse) y el manual desde `/plataforma`. El ciclo `REGISTRADA→RECAUDOS_COMPLETOS→ENVIADA_AL_BANCO→CERTIFICACION→ACTIVA` se avanza paso a paso desde la ficha; activar exige cuenta activa + llave VERIFICADA + admin, y es exclusivo del `PLATFORM_ADMIN`. Autogestión sí; autoactivación jamás.
 
 ## La Llave de Trabajo del banco
 

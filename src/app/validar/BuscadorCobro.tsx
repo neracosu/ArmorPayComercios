@@ -163,22 +163,6 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
 
   return (
     <>
-      {/* La cajera tiene que enterarse ANTES de buscar, no cuando el cobro
-          falle con un cliente esperando. */}
-      {!hayTurno && (
-        <p className="mb-4 flex items-start gap-2 rounded-control bg-alerta-suave px-4 py-3 text-sm text-alerta">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <span>
-            <strong>No tienes turno abierto.</strong> Puedes buscar pagos, pero
-            para cobrar primero{" "}
-            <a href="/turno" className="font-medium underline">
-              abre tu turno
-            </a>
-            .
-          </span>
-        </p>
-      )}
-
       <form action={accion} className="flex gap-3">
         <div className="flex-1">
           <label htmlFor="referencia" className="mb-1.5 block text-sm font-medium text-tinta-suave">

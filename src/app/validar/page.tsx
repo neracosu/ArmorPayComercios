@@ -14,6 +14,7 @@ export default async function ValidarPage() {
   const session = await getVerifiedSession();
   if (!session) redirect("/login?callbackUrl=/validar");
   if (session.user.role === "PLATFORM_ADMIN") redirect("/plataforma/solicitudes");
+  if (session.user.role === "PLATFORM_REVIEWER") redirect("/plataforma/comercios");
 
   const { turno, comercio, cobrosDelTurno } = await withSessionTenant(session, async () => {
     const turno = await turnoAbierto(session.user.id);
@@ -21,7 +22,13 @@ export default async function ValidarPage() {
       session.user.organizationId
         ? prisma.organization.findUnique({
             where: { id: session.user.organizationId },
-            select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
+            select: {
+              id: true,
+              razonSocial: true,
+              status: true,
+              logoMime: true,
+              logoUpdatedAt: true,
+            },
           })
         : null,
       turno
@@ -34,6 +41,32 @@ export default async function ValidarPage() {
     ]);
     return { turno, comercio, cobrosDelTurno };
   });
+
+  // Comercio sin activar: el dueño va a su paso a paso; la caja se entera de
+  // por qué todavía no puede cobrar en vez de buscar contra una pared.
+  const activo = comercio?.status === "ACTIVA";
+  if (!activo && session.user.role === "ORG_ADMIN") redirect("/comercio/activacion");
+  if (!activo) {
+    return (
+      <>
+        <Cabecera
+          comercio={comercio?.razonSocial ?? "—"}
+          logoUrl={logoUrlDe(comercio)}
+          usuario={session.user.name}
+          turnoAbierto={false}
+        />
+        <main className="mx-auto max-w-3xl px-6 py-8">
+          <div className="rounded-card border border-alerta/30 bg-alerta-suave p-6">
+            <p className="font-medium text-alerta">Tu comercio todavía no está activo</p>
+            <p className="mt-1 text-sm leading-relaxed text-alerta">
+              La activación está en proceso. Cuando esté lista, desde esta misma
+              pantalla vas a poder buscar y cobrar pagos.
+            </p>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

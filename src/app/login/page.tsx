@@ -34,6 +34,13 @@ export default async function LoginPage() {
         <p className="mt-6 text-center text-xs text-tinta-tenue">
           ¿Problemas para entrar? Pídele a tu administrador que revise tu usuario.
         </p>
+        <p className="mt-2 text-center text-sm text-tinta-tenue">
+          ¿Tu comercio aún no tiene cuenta?{" "}
+          <a href="/registro" className="font-medium text-marca-700 hover:underline">
+            Regístralo
+          </a>
+          .
+        </p>
       </div>
     </main>
   );

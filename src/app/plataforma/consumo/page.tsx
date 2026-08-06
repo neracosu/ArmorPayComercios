@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { getVerifiedSession } from "@/lib/session-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,10 @@ function inicioDiasAtras(dias: number): Date {
 }
 
 export default async function ConsumoPage() {
+  // Sección administrativa: la revisora no entra ni tecleando la URL.
+  const session = await getVerifiedSession();
+  if (session?.user.role !== "PLATFORM_ADMIN") redirect("/plataforma/comercios");
+
   const comercios = await db.organization.findMany({
     orderBy: { razonSocial: "asc" },
     select: { id: true, razonSocial: true, rif: true },

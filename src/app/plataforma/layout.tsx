@@ -7,25 +7,25 @@ import CerrarSesion from "@/components/CerrarSesion";
 export const dynamic = "force-dynamic";
 
 /**
- * Armazón del panel de plataforma. Solo `PLATFORM_ADMIN`.
- *
- * El guardia está acá, en el layout, y no repetido en cada pantalla: una
- * pantalla nueva colgada de esta ruta queda protegida sin que nadie se acuerde
- * de protegerla. Cada página igual verifica de nuevo, porque el layout no
- * cubre las server actions.
+ * Armazón del panel de plataforma: `PLATFORM_ADMIN` completo, y
+ * `PLATFORM_REVIEWER` (la revisora de expedientes) solo lo que su trabajo
+ * necesita — solicitudes y comercios. Las pantallas administrativas
+ * (usuarios, consumo) re-verifican el rol además del filtro del nav, y las
+ * server actions sensibles lo exigen por su cuenta.
  */
 const SECCIONES = [
-  { href: "/plataforma", icono: ShieldAlert, texto: "Resumen" },
-  { href: "/plataforma/solicitudes", icono: Inbox, texto: "Solicitudes" },
-  { href: "/plataforma/comercios", icono: Building2, texto: "Comercios" },
-  { href: "/plataforma/usuarios", icono: Users, texto: "Usuarios" },
-  { href: "/plataforma/consumo", icono: BarChart3, texto: "Consumo" },
+  { href: "/plataforma", icono: ShieldAlert, texto: "Resumen", soloAdmin: true },
+  { href: "/plataforma/solicitudes", icono: Inbox, texto: "Solicitudes", soloAdmin: false },
+  { href: "/plataforma/comercios", icono: Building2, texto: "Comercios", soloAdmin: false },
+  { href: "/plataforma/usuarios", icono: Users, texto: "Usuarios", soloAdmin: true },
+  { href: "/plataforma/consumo", icono: BarChart3, texto: "Consumo", soloAdmin: true },
 ];
 
 export default async function PlataformaLayout({ children }: { children: React.ReactNode }) {
   const session = await getVerifiedSession();
   if (!session) redirect("/login?callbackUrl=/plataforma");
-  if (session.user.role !== "PLATFORM_ADMIN") redirect("/validar");
+  const esAdmin = session.user.role === "PLATFORM_ADMIN";
+  if (!esAdmin && session.user.role !== "PLATFORM_REVIEWER") redirect("/validar");
 
   return (
     <>
@@ -49,7 +49,7 @@ export default async function PlataformaLayout({ children }: { children: React.R
           </div>
         </div>
         <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 pb-2">
-          {SECCIONES.map((s) => (
+          {SECCIONES.filter((s) => esAdmin || !s.soloAdmin).map((s) => (
             <Link
               key={s.href}
               href={s.href}
