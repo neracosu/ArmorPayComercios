@@ -18,6 +18,8 @@ export function intentPublico(i: CheckoutIntent) {
     id: i.id,
     externalRef: i.externalRef,
     amountVES: i.amountVES.toFixed(2),
+    amountUSD: i.amountUSD ? i.amountUSD.toFixed(2) : null,
+    exchangeRateUsed: i.exchangeRateUsed ? i.exchangeRateUsed.toFixed(4) : null,
     concepto: i.concepto,
     method: i.method,
     // El worker marca EXPIRED en la base; mientras tanto el estado reportado

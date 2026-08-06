@@ -69,6 +69,7 @@ export default function DocsApiPage() {
             ["#intents", "Cobros (intents)"],
             ["#referencia", "Validar referencia"],
             ["#c2p", "Cobro C2P"],
+            ["#rate", "Tasa BCV"],
             ["#banks", "Bancos"],
             ["#pay", "Checkout alojado"],
             ["#webhooks", "Webhooks"],
@@ -121,6 +122,12 @@ Content-Type: application/json
   "amountVES": "1450.00",           # máx. 2 decimales; string o número
   "concepto": "Tienda X pedido 8812"  # opcional, ≤40 tras sanear
 }
+
+# ¿Precias en dólares? Manda amountUSD EN VEZ de amountVES: congelamos
+# el monto en Bs con la tasa BCV del momento, y la validación acepta
+# también USD × tasa vigente (el que paga con la tasa de hoy no falla).
+# { "externalRef": "8812", "amountUSD": "25.00" }
+# → el intent trae además amountUSD y exchangeRateUsed.
 
 → 201
 {
@@ -201,6 +208,21 @@ Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED
   verifica con tu cliente antes de reintentar.
 
 El monto y el concepto salen del intent — el body nunca los lleva.`}</pre>
+        </section>
+
+        {/* ── Exchange rate ── */}
+        <section id="rate" className="mt-12 scroll-mt-4">
+          <h2 className={encabezado}>Tasa BCV</h2>
+          <p className="mt-3 leading-relaxed text-tinta-suave">
+            Precia con la misma tasa con la que nosotros congelamos y validamos:
+            cero discrepancias entre tu carrito y el cobro.
+          </p>
+          <Metodo verbo="GET" ruta="/api/v1/exchange-rate" />
+          <pre className={codigo}>{`→ 200
+{ "currency": "USD/VES", "rate": "168.4200", "source": "BCV",
+  "fetchedAt": "2026-08-06T14:00:00.000Z" }
+
+# Sin tasa utilizable: 503 RATE_UNAVAILABLE — nunca inventamos una.`}</pre>
         </section>
 
         {/* ── Banks ── */}
@@ -309,6 +331,7 @@ function verificar($secreto, $timestamp, $firma, $bodyCrudo) {
                   ["422", "C2P_REJECTED", "El banco rechazó: muestra hint y permite clave nueva."],
                   ["502", "BANK_UNAVAILABLE", "El banco no respondió: verifica antes de reintentar."],
                   ["422", "MERCHANT_NOT_READY", "El comercio no tiene cuentas activas."],
+                  ["503", "RATE_UNAVAILABLE", "Sin tasa BCV utilizable: reintenta o cobra en VES."],
                 ].map(([http, code, que]) => (
                   <tr key={code}>
                     <td className="px-4 py-2 font-mono text-xs">{http}</td>

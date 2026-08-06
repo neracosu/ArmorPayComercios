@@ -22,6 +22,8 @@ interface IntentPublico {
   id: string;
   externalRef: string;
   amountVES: string;
+  amountUSD?: string | null;
+  exchangeRateUsed?: string | null;
   concepto: string;
   status: string;
   overpaidVES: string | null;
@@ -461,6 +463,15 @@ export default function PagoPublico({ intent, comercio, c2pDisponible, bancosC2p
                     Monto exacto
                   </p>
                   <p className="monto mt-1 text-4xl">Bs {bolivares(intent.amountVES)}</p>
+                  {intent.amountUSD && intent.exchangeRateUsed && (
+                    <p className="mt-0.5 text-sm text-tinta-tenue">
+                      = ${bolivares(intent.amountUSD)} · tasa BCV{" "}
+                      {Number(intent.exchangeRateUsed).toLocaleString("es-VE", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 4,
+                      })}
+                    </p>
+                  )}
                   <p className="mt-1 text-sm text-tinta-tenue">
                     {intent.concepto} · pedido {intent.externalRef}
                   </p>

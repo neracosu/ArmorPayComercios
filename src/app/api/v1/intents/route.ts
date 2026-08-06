@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { withApiAuth, apiError, clientIpOf } from "@/lib/api-auth";
 import { rateLimitPorKey, registrarApiEvent } from "@/lib/api-rate-limit";
 import { intentPublico, montoVES, sanearConcepto } from "@/lib/checkout";
+import { tasaBcv, usdAVes, TasaNoDisponible } from "@/lib/bcv";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,10 @@ const VIGENCIA_MIN = 30;
 
 const bodySchema = z.object({
   externalRef: z.string().trim().min(1).max(120),
-  amountVES: z.union([z.string(), z.number()]),
+  // Uno de los dos, nunca ambos: en VES el monto es literal; en USD se
+  // congela a VES con la tasa BCV del momento (Fase 6).
+  amountVES: z.union([z.string(), z.number()]).optional(),
+  amountUSD: z.union([z.string(), z.number()]).optional(),
   concepto: z.string().trim().min(1).max(120).optional(),
 });
 
@@ -50,14 +54,44 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return apiError(400, "VALIDATION", "Body inválido.", { issues: parsed.error.issues });
     }
-    const monto = montoVES(parsed.data.amountVES);
-    if (!monto) {
-      return apiError(
-        400,
-        "INVALID_AMOUNT",
-        "amountVES debe ser un monto positivo con máximo 2 decimales (ej. \"1250.50\")."
-      );
+    const tieneVES = parsed.data.amountVES !== undefined;
+    const tieneUSD = parsed.data.amountUSD !== undefined;
+    if (tieneVES === tieneUSD) {
+      return apiError(400, "INVALID_AMOUNT", "Manda amountVES O amountUSD — exactamente uno.");
     }
+
+    let monto = null;
+    let montoUSD = null;
+    let tasa = null;
+    if (tieneVES) {
+      monto = montoVES(parsed.data.amountVES);
+      if (!monto) {
+        return apiError(
+          400,
+          "INVALID_AMOUNT",
+          "amountVES debe ser un monto positivo con máximo 2 decimales (ej. \"1250.50\")."
+        );
+      }
+    } else {
+      montoUSD = montoVES(parsed.data.amountUSD);
+      if (!montoUSD) {
+        return apiError(
+          400,
+          "INVALID_AMOUNT",
+          "amountUSD debe ser un monto positivo con máximo 2 decimales (ej. \"25.00\")."
+        );
+      }
+      try {
+        tasa = await tasaBcv();
+      } catch (e) {
+        if (!(e instanceof TasaNoDisponible)) throw e;
+        // Sin tasa utilizable NO se inventa una: el cobro en USD se niega
+        // explícito y el carrito puede reintentar o cobrar en VES.
+        return apiError(503, "RATE_UNAVAILABLE", "La tasa BCV no está disponible ahora. Reintenta en unos minutos o manda amountVES.");
+      }
+      monto = usdAVes(montoUSD, tasa.rate);
+    }
+
     const concepto =
       sanearConcepto(parsed.data.concepto ?? `Pedido ${parsed.data.externalRef}`) || "Pago";
 
@@ -66,6 +100,9 @@ export async function POST(req: NextRequest) {
       apiKeyId: auth.apiKeyId,
       externalRef: parsed.data.externalRef,
       amountVES: monto,
+      amountUSD: montoUSD,
+      exchangeRateUsed: tasa?.rate ?? null,
+      exchangeRateId: tasa?.id ?? null,
       concepto,
       idempotencyKey,
       expiresAt: new Date(Date.now() + VIGENCIA_MIN * 60_000),

@@ -341,6 +341,12 @@ model CheckoutIntent {
   apiKeyId       String
   externalRef    String // id del pedido en el carrito del comercio
   amountVES      Decimal       @db.Decimal(18, 2)
+  // Cobro preciado en USD (Fase 6): amountVES se congela con la tasa BCV del
+  // momento de crear, y la validación acepta también USD × tasa vigente
+  // (candidatos con tolerancia). Nulos en un cobro VES puro.
+  amountUSD         Decimal? @db.Decimal(18, 2)
+  exchangeRateUsed  Decimal? @db.Decimal(18, 4)
+  exchangeRateId    String?
   concepto       String // ≤40, saneado — viaja al C2P
   method         IntentMethod?
   status         IntentStatus  @default(PENDING)
@@ -496,6 +502,20 @@ model Recaudo {
   // versiones viejas de un RIF vencido).
   @@unique([organizationId, tipo])
   @@index([organizationId, createdAt])
+}
+
+/// Tasa BCV registrada. Modelo de PLATAFORMA (sin organizationId a propósito):
+/// la tasa es una sola para todos. Cada consulta exitosa a la fuente deja una
+/// fila — el historial ES la auditoría de qué tasa se usó y cuándo, y la fila
+/// más reciente es el caché. JAMÁS una tasa hardcodeada: sin fila utilizable,
+/// el cobro en USD falla explícito.
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  rate      Decimal  @db.Decimal(18, 4) // VES por 1 USD
+  source    String // dolarapi | pydolarve
+  fetchedAt DateTime @default(now())
+
+  @@index([fetchedAt])
 }
 
 /// Config de plataforma (no de tenant). NO lleva organizationId a propósito.

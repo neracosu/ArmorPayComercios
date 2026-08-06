@@ -4,6 +4,7 @@ import { prisma } from "../src/lib/prisma";
 import { runAsPlatform, runWithTenant } from "../src/lib/tenant-context";
 import { descifrar } from "../src/lib/crypto";
 import { encolarWebhooks } from "../src/lib/checkout";
+import { tasaBcv } from "../src/lib/bcv";
 
 /**
  * Worker del checkout — proceso PM2 aparte (`armorpay-worker`).
@@ -150,9 +151,28 @@ async function vencerIntents(): Promise<number> {
   return vencidos.length;
 }
 
+/**
+ * Mantiene la tasa BCV tibia: si está fresca, `tasaBcv()` no toca las
+ * fuentes; si venció, la renueva acá y no en la cara de un cliente creando
+ * un intent. Un fallo se anota y ya — el flujo de cobro tiene sus propios
+ * fallbacks.
+ */
+let ultimoAvisoTasa = 0;
+async function refrescarTasa(): Promise<void> {
+  try {
+    await runAsPlatform("worker: mantener la tasa BCV fresca", () => tasaBcv());
+  } catch (e) {
+    if (Date.now() - ultimoAvisoTasa > 3600_000) {
+      log(`tasa BCV sin fuente utilizable: ${(e as Error).message}`);
+      ultimoAvisoTasa = Date.now();
+    }
+  }
+}
+
 async function tick(): Promise<void> {
   const entregas = await procesarEntregas();
   const vencidos = await vencerIntents();
+  await refrescarTasa();
   if (entregas > 0 || vencidos > 0) {
     log(`entregas procesadas ${entregas} · intents vencidos ${vencidos}`);
   }

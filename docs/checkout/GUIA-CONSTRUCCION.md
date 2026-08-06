@@ -234,7 +234,9 @@ Este es el **diferenciador**: ni MovilPay ni el BDV avisan — nosotros sí, por
 - **Plugin WooCommerce**: clase `WC_Payment_Gateway` que crea el intent por API v1 (server-side, el API key nunca al navegador), redirige a `/pay/{id}` y confirma el pedido por webhook (con verificación de firma) o polling de respaldo. El plugin NO valida nada él mismo — toda la lógica queda de nuestro lado.
 - SDK JS liviano después, si hace falta para carritos custom (el REST ya alcanza).
 
-## FASE 6 (opcional, después de operar) — Módulo USD/BCV
+## FASE 6 — Módulo USD/BCV ✅ HECHA (2026-08-06)
+
+> Ejecutada según su diseño (guías 1 §7.2/§10 y 3 §5): `ExchangeRate` como historial-auditoría (cada lectura persiste; la más nueva es el caché, TTL 30 min), `src/lib/bcv.ts` con dos fuentes en cascada (dolarapi → pydolarve) + última conocida hasta 24 h + `TasaNoDisponible` explícito — jamás hardcodeada. `POST /intents` acepta `amountUSD` XOR `amountVES` (congela VES con la tasa y guarda `exchangeRateUsed`/`exchangeRateId`; sin tasa → 503 `RATE_UNAVAILABLE`); validación por **candidatos** (VES congelado y USD×tasa vigente, tolerancia por candidato, sobrepago medido contra el candidato más alto cubierto; la caída de la fuente jamás frena una validación). `/pay` muestra el USD y la tasa; el worker mantiene la tasa tibia; **`GET /api/v1/exchange-rate`** expone la tasa al integrador (valor agregado definido por Neri: preciar con la misma tasa que valida). E2E real: tasa 755.9001 leída de la fuente, intent de $25 congelado en Bs 18.897,50 y confirmado exacto. Docs públicas actualizadas.
 
 Solo si los comercios precian en USD: fuente única de tasa con fallbacks y **error explícito** (jamás tasa hardcodeada), `exchangeRateUsed`+`exchangeRateId` en el intent, y validación de monto por **candidatos** (monto grabado / total×tasa del intent / total×tasa vigente) con tolerancia — el diseño completo está en las guías 1 (§7.2, §10) y 3 (§5). El checkout v1 opera en **VES puros** (el carrito manda `amountVES`): menos piezas, cero drift.
 

@@ -3,6 +3,7 @@ import { prisma } from "./prisma";
 import { registrarApiEvent } from "./api-rate-limit";
 import { encolarWebhooks, maskRef, toleranciaVES } from "./checkout";
 import { execC2pPago, ExecError } from "./exec-client";
+import { tasaBcv, usdAVes } from "./bcv";
 import { describeC2p } from "../../gateway/bt-c2p-codes";
 
 /**
@@ -101,11 +102,28 @@ export async function confirmarPorReferencia(
     };
   }
 
-  const monto = intent.amountVES;
-  const minimo = monto.sub(toleranciaVES(monto));
+  // MONTOS ACEPTABLES (candidatos, diseño de la Fase 6): siempre el VES
+  // congelado al crear; si el intent está preciado en USD, también
+  // USD × tasa VIGENTE — el pagador pudo calcular con la tasa de hoy. Si la
+  // tasa vigente no responde, se valida solo contra el congelado: la caída
+  // de una fuente de tasa jamás frena una validación.
+  const candidatos: Prisma.Decimal[] = [intent.amountVES];
+  if (intent.amountUSD) {
+    try {
+      const vigente = await tasaBcv();
+      const conVigente = usdAVes(intent.amountUSD, vigente.rate);
+      if (!conVigente.equals(intent.amountVES)) candidatos.push(conVigente);
+    } catch {
+      // candidato único
+    }
+  }
+  const minimoGlobal = candidatos
+    .map((c) => c.sub(toleranciaVES(c)))
+    .reduce((a, b) => (a.lessThan(b) ? a : b));
+
   const suficientes = pagos.filter((p) => {
     try {
-      return new Prisma.Decimal(p.montoTransaccion).greaterThanOrEqualTo(minimo);
+      return new Prisma.Decimal(p.montoTransaccion).greaterThanOrEqualTo(minimoGlobal);
     } catch {
       return false;
     }
@@ -115,7 +133,8 @@ export async function confirmarPorReferencia(
     const mayor = pagos
       .map((p) => new Prisma.Decimal(p.montoTransaccion))
       .reduce((a, b) => (a.greaterThan(b) ? a : b));
-    const faltante = monto.sub(mayor);
+    const menorCandidato = candidatos.reduce((a, b) => (a.lessThan(b) ? a : b));
+    const faltante = menorCandidato.sub(mayor);
     await rechazo(`subpago faltan=${faltante.toFixed(2)}`);
     return {
       ok: false,
@@ -128,7 +147,10 @@ export async function confirmarPorReferencia(
 
   let pago = suficientes[0];
   if (suficientes.length > 1) {
-    const exactos = suficientes.filter((p) => new Prisma.Decimal(p.montoTransaccion).equals(monto));
+    const exactos = suficientes.filter((p) => {
+      const m = new Prisma.Decimal(p.montoTransaccion);
+      return candidatos.some((c) => m.equals(c));
+    });
     if (exactos.length !== 1) {
       await rechazo(`ambigua candidatos=${suficientes.length}`);
       return {
@@ -142,7 +164,14 @@ export async function confirmarPorReferencia(
   }
 
   const pagado = new Prisma.Decimal(pago.montoTransaccion);
-  const sobrepago = pagado.greaterThan(monto) ? pagado.sub(monto) : null;
+  // El sobrepago se mide contra el candidato MÁS ALTO que el pago cubre:
+  // pagar con la tasa de hoy no es «pagar de más». La lista nunca queda
+  // vacía: pasar el mínimo global implica cubrir al menos un candidato.
+  const cubiertos = candidatos.filter((c) =>
+    pagado.greaterThanOrEqualTo(c.sub(toleranciaVES(c)))
+  );
+  const cubierto = cubiertos.reduce((a, b) => (a.greaterThan(b) ? a : b));
+  const sobrepago = pagado.greaterThan(cubierto) ? pagado.sub(cubierto) : null;
 
   try {
     await prisma.paymentClaim.create({
