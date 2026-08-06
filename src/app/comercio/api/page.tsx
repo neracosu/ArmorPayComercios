@@ -51,10 +51,17 @@ export default async function ApiPage() {
         <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">
           Llaves de API
         </h1>
-        <p className="mb-6 mt-1 text-sm text-tinta-tenue">
+        <p className="mb-2 mt-1 text-sm text-tinta-tenue">
           Con una llave, tu tienda en línea crea cobros y los confirma contra
           tus cuentas. La llave completa se muestra una sola vez al crearla:
           guárdala en tu servidor, nunca en el navegador de tus clientes.
+        </p>
+        <p className="mb-6 text-sm text-tinta-tenue">
+          La guía completa para tu desarrollador está en{" "}
+          <a href="/docs/api" target="_blank" className="font-medium text-marca-700 hover:underline">
+            armorpay.net/docs/api
+          </a>
+          .
         </p>
         <GestionApiKeys
           llaves={llaves.map((k) => ({
