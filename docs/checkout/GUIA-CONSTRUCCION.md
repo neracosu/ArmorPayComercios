@@ -58,7 +58,9 @@ Decisiones ya tomadas (no re-litigar): la ejecución bancaria va **por el gatewa
 
 ---
 
-## FASE 1 — Pata saliente del gateway: el ejecutor bancario (~2-3 días)
+## FASE 1 — Pata saliente del gateway: el ejecutor bancario ✅ HECHA (2026-08-06)
+
+> Ejecutada según lo escrito: `gateway/server.ts` (node:http en 127.0.0.1:3102, HMAC con `GATEWAY_EXEC_HMAC_SECRET` propio, timeout 35 s, body ≤32 KB), `gateway/bt-c2p.ts` + `bt-c2p-codes.ts` portados (identidad C2P por parámetro, no settings — diferencia clave con el molde del interno), migración `bt_c2p_afiliacion` (`Organization.btCodAfiliado` + `btC2pEnabled`). E2E verificado en producción: health 200, HMAC inválida/faltante/replay → 401, ruta desconocida → 404, y `/exec/c2p/bancos` REAL → catálogo de 23 bancos del Tesoro (confirma base prod + IP whitelisteada). Pendiente por diseño: `/exec/c2p/pago` con dinero real se prueba en Fase 3 (monto mínimo).
 
 El gateway hoy es un poller puro (`gateway/index.ts` lo dice: ":3102 conceptual; no expone HTTP"). Acá gana un **servidor HTTP en `127.0.0.1:3102`** (loopback estricto, Apache NO lo proxya — solo el SaaS local le habla; si el SaaS se muda algún día, ahí se expone vía Apache+TLS con la misma HMAC).
 

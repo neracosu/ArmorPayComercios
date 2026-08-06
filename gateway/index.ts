@@ -1,15 +1,21 @@
 import { execFileSync } from "node:child_process";
+import type { Server } from "node:http";
 import { readCreditsSince, closeSource } from "./source";
 import { sign, SIGNATURE_HEADER, TIMESTAMP_HEADER, type EventEnvelope } from "./contract";
+import { startExecServer } from "./server";
 import { prisma } from "../src/lib/prisma";
 import { runAsPlatform } from "../src/lib/tenant-context";
 
 /**
- * Gateway bancario — proceso PM2 aparte (:3102 conceptual; no expone HTTP).
+ * Gateway bancario — proceso PM2 aparte. Dos patas en un mismo proceso:
  *
- * Lee los créditos que el sistema viejo ya persistió y se los entrega firmados
- * al SaaS. Vive en este host para siempre: la IP que el banco tiene
- * whitelisteada es la de este servidor.
+ * 1. ENTRANTE (el loop de abajo): lee los créditos que el sistema viejo ya
+ *    persistió y se los entrega firmados al SaaS.
+ * 2. SALIENTE (`server.ts`): ejecutor bancario en 127.0.0.1:3102 — C2P del
+ *    Tesoro y validación online BDT, invocado por el SaaS con HMAC propia.
+ *
+ * Vive en este host para siempre: la IP que el banco tiene whitelisteada es la
+ * de este servidor.
  *
  * POR QUÉ NO HAY COLA NI REDIS. El plan original preveía BullMQ con reintentos
  * y dead-letter. Al implementarlo quedó claro que sobra: `WebhookTransaction`
@@ -125,8 +131,11 @@ async function tick(): Promise<void> {
   }
 }
 
+let execServer: Server | null = null;
+
 async function loop(): Promise<void> {
   log(`gateway arriba — destino ${INGEST_URL}, ciclo ${POLL_MS}ms, solapamiento ${OVERLAP_MS}ms`);
+  execServer = startExecServer(log);
 
   while (!parando) {
     try {
@@ -164,6 +173,7 @@ async function loop(): Promise<void> {
 async function shutdown(signal: string) {
   log(`${signal} recibido — cerrando`);
   parando = true;
+  if (execServer) await new Promise((r) => execServer!.close(r)).catch(() => {});
   await closeSource().catch(() => {});
   await prisma.$disconnect().catch(() => {});
   process.exit(0);
