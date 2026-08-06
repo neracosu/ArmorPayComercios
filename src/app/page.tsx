@@ -561,8 +561,11 @@ export default function Portada() {
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
           <p className="mt-4 text-sm text-tinta-tenue">
-            Hoy operamos con el Banco Digital de los Trabajadores. Si cobras en
-            otro banco, escríbenos igual y te decimos con franqueza si podemos.
+            Hoy operamos con el <strong className="font-medium text-tinta-suave">Banco
+            Digital de los Trabajadores (BDT)</strong> y el{" "}
+            <strong className="font-medium text-tinta-suave">Banco del Tesoro</strong> —
+            incluido su Botón de Pago (C2P). Si cobras en otro banco, escríbenos
+            igual y te decimos con franqueza si podemos.
           </p>
           <p className="mt-2 text-sm text-tinta-tenue">
             El servicio es para <strong className="font-medium text-tinta-suave">personas
