@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { AlertTriangle, Check, Copy, Loader2, Power, Webhook } from "lucide-react";
+import { AlertTriangle, Check, Copy, KeyRound, Loader2, Power, Webhook } from "lucide-react";
 import {
   crearWebhookEndpoint,
   desactivarWebhookEndpoint,
+  rotarSecretoWebhook,
   type ResultadoApiKey,
 } from "./actions";
 
@@ -81,7 +82,12 @@ function FilaEndpoint({ endpoint }: { endpoint: Endpoint }) {
     desactivarWebhookEndpoint,
     null
   );
+  const [estadoRotar, accionRotar] = useFormState<ResultadoApiKey | null, FormData>(
+    rotarSecretoWebhook,
+    null
+  );
   const [confirmar, setConfirmar] = useState(false);
+  const [confirmarRotar, setConfirmarRotar] = useState(false);
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-5 py-4">
@@ -103,29 +109,63 @@ function FilaEndpoint({ endpoint }: { endpoint: Endpoint }) {
             {estado.error}
           </p>
         )}
+        {estadoRotar && !estadoRotar.ok && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-error">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            {estadoRotar.error}
+          </p>
+        )}
       </div>
       {endpoint.isActive && (
-        <form action={accion}>
-          <input type="hidden" name="id" value={endpoint.id} />
-          {confirmar ? (
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-control bg-error px-3 py-2 text-sm font-medium text-white hover:brightness-90"
-            >
-              <Power className="h-4 w-4" aria-hidden />
-              Confirmar
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmar(true)}
-              className="inline-flex items-center gap-1.5 rounded-control border border-error/40 px-3 py-2 text-sm font-medium text-error hover:bg-error-suave"
-            >
-              <Power className="h-4 w-4" aria-hidden />
-              Desactivar
-            </button>
-          )}
-        </form>
+        <div className="flex shrink-0 items-center gap-2">
+          <form action={accionRotar}>
+            <input type="hidden" name="id" value={endpoint.id} />
+            {confirmarRotar ? (
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-control bg-alerta px-3 py-2 text-sm font-medium text-white hover:brightness-90"
+              >
+                <KeyRound className="h-4 w-4" aria-hidden />
+                El anterior deja de valer ya
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmarRotar(true)}
+                className="inline-flex items-center gap-1.5 rounded-control border border-tinta-borde px-3 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                <KeyRound className="h-4 w-4" aria-hidden />
+                Rotar secreto
+              </button>
+            )}
+          </form>
+          <form action={accion}>
+            <input type="hidden" name="id" value={endpoint.id} />
+            {confirmar ? (
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-control bg-error px-3 py-2 text-sm font-medium text-white hover:brightness-90"
+              >
+                <Power className="h-4 w-4" aria-hidden />
+                Confirmar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmar(true)}
+                className="inline-flex items-center gap-1.5 rounded-control border border-error/40 px-3 py-2 text-sm font-medium text-error hover:bg-error-suave"
+              >
+                <Power className="h-4 w-4" aria-hidden />
+                Desactivar
+              </button>
+            )}
+          </form>
+        </div>
+      )}
+      {estadoRotar?.ok && (
+        <div className="w-full">
+          <SecretoRecienCreado resultado={estadoRotar} />
+        </div>
       )}
     </li>
   );

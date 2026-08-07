@@ -137,6 +137,46 @@ export async function crearWebhookEndpoint(
   });
 }
 
+/**
+ * Rota el secreto de firma de un webhook sin tocar la URL ni el historial de
+ * entregas. El secreto viejo deja de valer en el acto: los avisos siguientes
+ * (incluidos los reintentos ya en cola) salen firmados con el nuevo — el
+ * worker lee el secreto al momento de entregar, no al de encolar.
+ */
+export async function rotarSecretoWebhook(
+  _previo: ResultadoApiKey | null,
+  datos: FormData
+): Promise<ResultadoApiKey> {
+  const session = await exigirAdminComercio();
+  const id = String(datos.get("id") ?? "");
+  if (!id) return { ok: false, error: "Falta el webhook." };
+
+  return withSessionTenant(session, async () => {
+    const endpoint = await prisma.webhookEndpoint.findUnique({
+      where: { id },
+      select: { isActive: true },
+    });
+    if (!endpoint) return { ok: false, error: "Ese webhook no existe." };
+    if (!endpoint.isActive) {
+      return { ok: false, error: "Ese webhook está inactivo — no tiene sentido rotarle el secreto." };
+    }
+
+    const secret = `whsec_${randomBytes(24).toString("hex")}`;
+    await prisma.webhookEndpoint.update({
+      where: { id },
+      data: { secretEnc: cifrar(secret) },
+    });
+
+    revalidatePath("/comercio/api");
+    return {
+      ok: true,
+      mensaje:
+        "Secreto rotado. Actualízalo en tu servidor AHORA: el anterior ya no firma nada.",
+      key: secret,
+    };
+  });
+}
+
 export async function desactivarWebhookEndpoint(
   _previo: ResultadoApiKey | null,
   datos: FormData
