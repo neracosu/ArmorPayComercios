@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
@@ -99,11 +100,14 @@ export default async function CierresPage() {
             <p className="monto mt-1">{abiertos}</p>
             <p className="mt-1 text-sm text-tinta-tenue">turno(s) abierto(s)</p>
           </div>
-          <div className="rounded-card border border-tinta-borde bg-white p-5">
+          <Link
+            href="/comercio/ventas"
+            className="rounded-card border border-tinta-borde bg-white p-5 transition-colors hover:border-marca-600"
+          >
             <p className="text-sm text-tinta-tenue">Ventas en línea hoy</p>
             <p className="monto mt-1">{checkoutHoy}</p>
             <p className="mt-1 text-sm text-tinta-tenue">cobro(s) por checkout</p>
-          </div>
+          </Link>
         </div>
 
         {/* El medidor del plan: avisar ANTES de pasarse, nunca frenar un cobro. */}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot, ClipboardList, Image as ImageIcon, KeyRound, Search, Store, Users } from "lucide-react";
+import { CircleDot, ClipboardList, Image as ImageIcon, KeyRound, Search, ShoppingBag, Store, Users } from "lucide-react";
 import CerrarSesion from "./CerrarSesion";
 
 /**
@@ -70,6 +70,13 @@ export default function Cabecera({
               >
                 <ClipboardList className="h-4 w-4" aria-hidden />
                 Cierres
+              </Link>
+              <Link
+                href="/comercio/ventas"
+                className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                <ShoppingBag className="h-4 w-4" aria-hidden />
+                Ventas
               </Link>
               <Link
                 href="/comercio/cajas"
