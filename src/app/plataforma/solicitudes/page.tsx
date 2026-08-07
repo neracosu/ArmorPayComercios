@@ -13,7 +13,11 @@ const db = new PrismaClient();
 export default async function SolicitudesPage() {
   const session = await getVerifiedSession();
   if (!session) redirect("/login?callbackUrl=/plataforma/solicitudes");
-  if (session.user.role !== "PLATFORM_ADMIN") redirect("/validar");
+  // La revisora VE la cola (su nav la promete); convertir y descartar siguen
+  // siendo del admin — las server actions lo exigen por su cuenta.
+  const rol = session.user.role;
+  if (rol !== "PLATFORM_ADMIN" && rol !== "PLATFORM_REVIEWER") redirect("/validar");
+  const soloLectura = rol !== "PLATFORM_ADMIN";
 
   const leads = await db.lead.findMany({
     where: { estado: { in: ["NUEVO", "CONTACTADO"] } },
@@ -50,6 +54,7 @@ export default async function SolicitudesPage() {
             <TarjetaLead
               key={lead.id}
               lead={{ ...lead, createdAt: lead.createdAt.toISOString() }}
+              soloLectura={soloLectura}
             />
           ))}
         </div>

@@ -48,7 +48,14 @@ function Boton({ children }: { children: React.ReactNode }) {
 const campo =
   "w-full rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta focus:border-marca-600 focus:outline-none";
 
-export default function TarjetaLead({ lead }: { lead: Lead }) {
+export default function TarjetaLead({
+  lead,
+  soloLectura = false,
+}: {
+  lead: Lead;
+  /** La revisora ve la cola sin botones: convertir/descartar son del admin. */
+  soloLectura?: boolean;
+}) {
   const [abierto, setAbierto] = useState(false);
   const [estado, accion] = useFormState<Resultado | null, FormData>(convertirLead, null);
   const slug = sugerirSlug(lead.empresa);
@@ -133,7 +140,7 @@ export default function TarjetaLead({ lead }: { lead: Lead }) {
         </p>
       )}
 
-      {!abierto ? (
+      {soloLectura ? null : !abierto ? (
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
