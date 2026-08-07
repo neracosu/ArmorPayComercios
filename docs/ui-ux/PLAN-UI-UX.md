@@ -31,14 +31,27 @@ De las guías de checkout: señales de confianza pegadas al punto de pago (+18% 
 
 ### P3 — Panel del comercio (dueño: cierres, cajas, sucursales, API, perfil)
 
-1. **Un «hoy» de un vistazo**: Cierres ya muestra «cobrado hoy», pero el dueño entra a VER cómo va el negocio — un encabezado con cobrado hoy / cobros / cajas abiertas en TODAS las páginas del comercio (o una página de inicio del comercio).
-2. **El medidor de consumo del plan** (`consumoDelMes()` ya existe y nada la consume — deuda anotada en la guía): pintarla en el panel del dueño.
-3. **Vacíos que enseñan**: los estados vacíos de API/webhooks ya orientan; replicar el patrón en cierres/cajas para el comercio recién creado (onboarding implícito: qué falta para cobrar la primera vez).
+1. **Un «hoy» de un vistazo**: Cierres ya muestra «cobrado hoy», pero el dueño entra a VER cómo va el negocio — un encabezado con cobrado hoy / cobros / cajas abiertas en TODAS las páginas del comercio (o una página de inicio del comercio). *(Pendiente; Cierres sigue siendo el dashboard de facto.)*
+2. ~~**El medidor de consumo del plan**~~ ✅ Hecho (2026-08-06): el medidor con barra vive en `/comercio/cierres`.
+3. **Vacíos que enseñan**: los estados vacíos de API/webhooks ya orientan; replicar el patrón en cierres/cajas para el comercio recién creado (onboarding implícito: qué falta para cobrar la primera vez). *(Ventas ya nació con el patrón — 2026-08-06.)*
 
 ### P4 — Panel de plataforma (nosotros; funcional manda)
 
-1. La ficha del comercio creció hoy (llave, C2P, logo, cuentas, usuarios) — ya pide **navegación por secciones** (anclas o tabs) antes de que crezca más.
-2. **Checklist de alta visible**: el flujo real es razón social → cuentas → llave → C2P → logo → admin; la ficha debería mostrar qué pasos faltan (hoy lo dice suelto en mensajes).
+1. ~~Navegación por secciones en la ficha~~ ✅ Hecho (2026-08-06): anclas en `comercios/[id]`.
+2. ~~**Checklist de alta visible**~~ ✅ Hecho (2026-08-06): `CicloActivacion` en la ficha.
+
+### P6 — Observabilidad del checkout ✅ HECHO (2026-08-06)
+
+> Punto ciego del plan original (P1-P5 se escribieron ANTES de las Fases 3-6 del
+> checkout): las fases agregaron 5 modelos y solo 2 tenían UI. Nadie podía
+> responder «¿qué pasó con el pedido 8812?» ni «¿mi webhook está llegando?»
+> desde una pantalla. Cerrado en una ronda:
+
+1. **`/comercio/ventas`** — el listado de cobros en línea del comercio: externalRef, monto (VES+USD), método, estado real (corrige PENDING vencido, mismo criterio que `intentPublico`), ref bancaria, sobrepagos, codres de fallo. Tarjetas de cobrado hoy / conversión 30d / pendientes vivos, filtros por estado, vacío que enseña (sin llaves → manda a crear la primera). Link en Cabecera y desde la tarjeta de Cierres.
+2. **Entregas de webhooks en `/comercio/api`** — últimas 20 con estado, intentos, próximo reintento y último error; botón «Reenviar» para FAILED_RETRYING/DEAD (attempts a 0, backoff desde el principio; nunca sobre DELIVERED — duplicaría el aviso).
+3. **`/plataforma/checkout`** (solo admin) — salud del ejecutor (`/exec/health`), worker (proxy: entregas listas >5 min sin tomar = caído), tasa BCV con edad; intents cross-tenant 7d por estado + últimos 30 con comercio; entregas con problema + reencolar; uso de API por comercio 24h (`ApiEvent`).
+4. **Desglose «En línea» en `/plataforma/consumo`** — informativo: la unidad facturable sigue igual; el desglose existe para decidir con datos si algún día se precian distinto.
+5. **Fix de rol**: el link Solicitudes ya no expulsa a la revisora — ve la cola en solo lectura; convertir/descartar siguen siendo del admin (guardas de server action intactas).
 
 ### P5 — Portada pública
 

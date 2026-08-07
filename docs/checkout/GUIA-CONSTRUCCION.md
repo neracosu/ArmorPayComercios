@@ -35,7 +35,7 @@ Decisiones ya tomadas (no re-litigar): la ejecución bancaria va **por el gatewa
 ## Limpieza barata antes de empezar (detectada en el inventario)
 
 - **`Lead` — doc vs comportamiento**: el comentario del schema dice que NO lleva `organizationId`, pero el modelo SÍ lo declara (`organizationId String?`, trazabilidad de conversión) → `Lead` ENTRA en `TENANT_MODELS` y exige contexto. Funciona porque el código usa clientes crudos/`runAsPlatform`, pero corregí el comentario del schema para que el próximo que lea no se confíe.
-- `consumoDelMes()` (`src/lib/limites.ts`) está escrita y no la consume ninguna pantalla; falta el medidor del `ORG_ADMIN`. No es parte del checkout — anotado para no perderlo.
+- ~~`consumoDelMes()` sin pantalla~~ **Resuelto (2026-08-06)**: el medidor del `ORG_ADMIN` vive en `/comercio/cierres`.
 - `sonner` y `clsx` están en package.json sin uso: usalos o sacalos.
 
 ---
