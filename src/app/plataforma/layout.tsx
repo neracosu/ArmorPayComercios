@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Building2, Inbox, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, Building2, Globe, Inbox, ShieldAlert, Users } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import CerrarSesion from "@/components/CerrarSesion";
 
@@ -17,6 +17,7 @@ const SECCIONES = [
   { href: "/plataforma", icono: ShieldAlert, texto: "Resumen", soloAdmin: true },
   { href: "/plataforma/solicitudes", icono: Inbox, texto: "Solicitudes", soloAdmin: false },
   { href: "/plataforma/comercios", icono: Building2, texto: "Comercios", soloAdmin: false },
+  { href: "/plataforma/checkout", icono: Globe, texto: "Checkout", soloAdmin: true },
   { href: "/plataforma/usuarios", icono: Users, texto: "Usuarios", soloAdmin: true },
   { href: "/plataforma/consumo", icono: BarChart3, texto: "Consumo", soloAdmin: true },
 ];
