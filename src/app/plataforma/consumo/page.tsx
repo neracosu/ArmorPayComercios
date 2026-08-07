@@ -43,7 +43,7 @@ export default async function ConsumoPage() {
 
   const filas = await Promise.all(
     comercios.map(async (c) => {
-      const [dia, sem, mes30, dup] = await Promise.all([
+      const [dia, sem, mes30, enLinea30, dup] = await Promise.all([
         db.paymentClaim.count({
           where: { organizationId: c.id, isDuplicate: false, claimedAt: { gte: hoy } },
         }),
@@ -53,11 +53,22 @@ export default async function ConsumoPage() {
         db.paymentClaim.count({
           where: { organizationId: c.id, isDuplicate: false, claimedAt: { gte: mes } },
         }),
+        // Cuántos de los 30 días vinieron por el checkout. Informativo: la
+        // unidad facturable sigue siendo el cobro, venga de caja o de la web
+        // — el desglose existe para DECIDIR si algún día se precian distinto.
+        db.paymentClaim.count({
+          where: {
+            organizationId: c.id,
+            isDuplicate: false,
+            source: "CHECKOUT",
+            claimedAt: { gte: mes },
+          },
+        }),
         db.paymentClaim.count({
           where: { organizationId: c.id, isDuplicate: true, claimedAt: { gte: mes } },
         }),
       ]);
-      return { ...c, dia, sem, mes30, dup, promedioDiario: Math.round(mes30 / 30) };
+      return { ...c, dia, sem, mes30, enLinea30, dup, promedioDiario: Math.round(mes30 / 30) };
     })
   );
 
@@ -87,6 +98,7 @@ export default async function ConsumoPage() {
               <th className="px-3 py-3 text-right font-medium">Hoy</th>
               <th className="px-3 py-3 text-right font-medium">7 días</th>
               <th className="px-3 py-3 text-right font-medium">30 días</th>
+              <th className="px-3 py-3 text-right font-medium">En línea</th>
               <th className="px-3 py-3 text-right font-medium">Prom./día</th>
               <th className="px-5 py-3 text-right font-medium">Duplicados</th>
             </tr>
@@ -106,6 +118,11 @@ export default async function ConsumoPage() {
                 <td className="px-3 py-3 text-right text-tinta">{f.dia}</td>
                 <td className="px-3 py-3 text-right text-tinta">{f.sem}</td>
                 <td className="px-3 py-3 text-right font-medium text-tinta">{f.mes30}</td>
+                <td className="px-3 py-3 text-right">
+                  <span className={f.enLinea30 > 0 ? "text-tinta" : "text-tinta-tenue"}>
+                    {f.enLinea30}
+                  </span>
+                </td>
                 <td className="px-3 py-3 text-right text-tinta-tenue">{f.promedioDiario}</td>
                 <td className="px-5 py-3 text-right">
                   <span className={f.dup > 0 ? "font-medium text-alerta" : "text-tinta-tenue"}>
@@ -119,9 +136,12 @@ export default async function ConsumoPage() {
       </div>
 
       <p className="mt-4 text-sm leading-relaxed text-tinta-tenue">
-        Los duplicados van aparte a propósito: son cobros que el sistema marcó
-        para revisión. Facturarlos como ventas distintas sería cobrar dos veces
-        por el mismo pago, que es justo lo que el producto evita.
+        «En línea» son los cobros del checkout dentro del total de 30 días —
+        hoy se facturan igual que los de caja; el desglose está para decidir
+        con datos si algún día se precian distinto. Los duplicados van aparte
+        a propósito: son cobros que el sistema marcó para revisión. Facturarlos
+        como ventas distintas sería cobrar dos veces por el mismo pago, que es
+        justo lo que el producto evita.
       </p>
     </main>
   );
