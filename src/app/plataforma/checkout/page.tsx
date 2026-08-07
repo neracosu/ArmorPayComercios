@@ -326,9 +326,17 @@ export default async function CheckoutMonitorPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="font-display font-bold tracking-tight text-tinta">
-          Uso de la API · últimas 24 horas
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display font-bold tracking-tight text-tinta">
+            Uso de la API · últimas 24 horas
+          </h2>
+          <Link
+            href="/plataforma/checkout/bitacora"
+            className="text-sm font-medium text-marca-700 hover:text-marca-900"
+          >
+            Bitácora fila a fila →
+          </Link>
+        </div>
         {usoOrdenado.length === 0 ? (
           <p className="mt-3 text-sm text-tinta-tenue">Sin actividad de API.</p>
         ) : (
@@ -350,7 +358,7 @@ export default async function CheckoutMonitorPage() {
         )}
         <p className="mt-3 text-sm text-tinta-tenue">
           Eventos de la bitácora de la API (intents, validaciones, rechazos).
-          El detalle fino sigue en la base — esto es el pulso.
+          Esto es el pulso; el detalle está en la bitácora.
         </p>
       </section>
     </main>
