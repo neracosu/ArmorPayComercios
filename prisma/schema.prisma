@@ -519,6 +519,9 @@ model ExchangeRate {
 }
 
 /// Config de plataforma (no de tenant). NO lleva organizationId a propósito.
+/// OJO: el SaaS no lo toca, pero NO está muerto — el gateway persiste acá su
+/// cursor del tail (`gateway/index.ts`). Antes de "limpiarlo", grep en
+/// gateway/ y worker/, no solo en src/.
 model PlatformSetting {
   key       String   @id
   value     String   @db.Text

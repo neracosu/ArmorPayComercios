@@ -31,7 +31,7 @@ De las guías de checkout: señales de confianza pegadas al punto de pago (+18% 
 
 ### P3 — Panel del comercio (dueño: cierres, cajas, sucursales, API, perfil)
 
-1. **Un «hoy» de un vistazo**: Cierres ya muestra «cobrado hoy», pero el dueño entra a VER cómo va el negocio — un encabezado con cobrado hoy / cobros / cajas abiertas en TODAS las páginas del comercio (o una página de inicio del comercio). *(Pendiente; Cierres sigue siendo el dashboard de facto.)*
+1. ~~**Un «hoy» de un vistazo**~~ ✅ Hecho (2026-08-06): `/comercio` es la página de inicio del dueño (ver P7).
 2. ~~**El medidor de consumo del plan**~~ ✅ Hecho (2026-08-06): el medidor con barra vive en `/comercio/cierres`.
 3. **Vacíos que enseñan**: los estados vacíos de API/webhooks ya orientan; replicar el patrón en cierres/cajas para el comercio recién creado (onboarding implícito: qué falta para cobrar la primera vez). *(Ventas ya nació con el patrón — 2026-08-06.)*
 
@@ -52,6 +52,14 @@ De las guías de checkout: señales de confianza pegadas al punto de pago (+18% 
 3. **`/plataforma/checkout`** (solo admin) — salud del ejecutor (`/exec/health`), worker (proxy: entregas listas >5 min sin tomar = caído), tasa BCV con edad; intents cross-tenant 7d por estado + últimos 30 con comercio; entregas con problema + reencolar; uso de API por comercio 24h (`ApiEvent`).
 4. **Desglose «En línea» en `/plataforma/consumo`** — informativo: la unidad facturable sigue igual; el desglose existe para decidir con datos si algún día se precian distinto.
 5. **Fix de rol**: el link Solicitudes ya no expulsa a la revisora — ve la cola en solo lectura; convertir/descartar siguen siendo del admin (guardas de server action intactas).
+
+### P7 — Inicio del comercio + cierre de deudas ✅ HECHO (2026-08-06, segunda ronda)
+
+1. **`/comercio` — la página de inicio del dueño (P3.1)**: cobrado hoy / cajas trabajando / ventas en línea (tarjetas-link), avisos solo si piden acción (llave no verificada, duplicados por revisar, webhooks agotados), el plan en una línea con barra, últimos 10 cobros de cualquier origen. Comercio sin activar → su paso a paso, mismo criterio que /validar.
+2. **`/inicio` — aterrizaje único por rol** tras el login: admin → /plataforma, revisora → comercios, dueño → /comercio, caja → /validar. El default del login dejó de ser /validar para todos.
+3. **Rotar secreto de webhook** sin borrar el endpoint (URL e historial intactos): el nuevo se muestra UNA vez; el viejo deja de firmar en el acto — el worker lee el secreto al entregar, no al encolar.
+4. **`/plataforma/checkout/bitacora`** — `ApiEvent` fila a fila con filtros por comercio y evento (últimos 100), llave y IP a la vista; enlazada desde el monitoreo.
+5. **`PlatformSetting` NO se elimina**: parecía muerto pero es el cursor del tail del gateway (`gateway/index.ts`) — quedó documentado en el schema. Lección: grep en `gateway/` y `worker/`, no solo en `src/`.
 
 ### P5 — Portada pública
 
