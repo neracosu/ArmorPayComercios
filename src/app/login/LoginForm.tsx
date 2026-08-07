@@ -31,7 +31,7 @@ export default function LoginForm() {
     });
 
     if (res?.ok) {
-      router.push(params.get("callbackUrl") ?? "/validar");
+      router.push(params.get("callbackUrl") ?? "/inicio");
       router.refresh();
       return;
     }

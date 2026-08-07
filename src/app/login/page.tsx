@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage() {
   // Si ya hay sesión válida, no tiene sentido pedirla de nuevo.
   const session = await getVerifiedSession();
-  if (session) redirect("/validar");
+  if (session) redirect("/inicio");
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">

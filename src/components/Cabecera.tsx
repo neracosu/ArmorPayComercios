@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot, ClipboardList, Image as ImageIcon, KeyRound, Search, ShoppingBag, Store, Users } from "lucide-react";
+import { CircleDot, ClipboardList, Home, Image as ImageIcon, KeyRound, Search, ShoppingBag, Store, Users } from "lucide-react";
 import CerrarSesion from "./CerrarSesion";
 
 /**
@@ -64,6 +64,13 @@ export default function Cabecera({
           </Link>
           {esAdminComercio && (
             <>
+              <Link
+                href="/comercio"
+                className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                <Home className="h-4 w-4" aria-hidden />
+                Inicio
+              </Link>
               <Link
                 href="/comercio/cierres"
                 className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
