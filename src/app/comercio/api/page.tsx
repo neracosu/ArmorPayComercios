@@ -5,6 +5,7 @@ import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 import GestionApiKeys from "./GestionApiKeys";
 import GestionWebhooks from "./GestionWebhooks";
+import EntregasWebhooks, { type Entrega } from "./EntregasWebhooks";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,8 @@ export default async function ApiPage() {
   if (!session) redirect("/login?callbackUrl=/comercio/api");
   if (session.user.role !== "ORG_ADMIN") redirect("/validar");
 
-  const { llaves, endpoints, comercio } = await withSessionTenant(session, async () => {
-    const [llaves, endpoints, comercio] = await Promise.all([
+  const { llaves, endpoints, comercio, entregas } = await withSessionTenant(session, async () => {
+    const [llaves, endpoints, comercio, entregas] = await Promise.all([
       prisma.apiKey.findMany({
         orderBy: { createdAt: "desc" },
         select: {
@@ -34,8 +35,49 @@ export default async function ApiPage() {
         where: { id: session.user.organizationId! },
         select: { id: true, razonSocial: true, logoMime: true, logoUpdatedAt: true },
       }),
+      prisma.webhookDelivery.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          endpointId: true,
+          payload: true,
+          status: true,
+          attempts: true,
+          nextRetryAt: true,
+          lastError: true,
+          createdAt: true,
+        },
+      }),
     ]);
-    return { llaves, endpoints, comercio };
+    return { llaves, endpoints, comercio, entregas };
+  });
+
+  // El payload guarda el evento y el intent completos; para la lista alcanza
+  // con el evento y el pedido. Sin FK a propósito (tabla de alto volumen):
+  // la URL se resuelve acá contra los endpoints ya leídos.
+  const urlPorEndpoint = new Map(endpoints.map((e) => [e.id, e.url]));
+  const filasEntregas: Entrega[] = entregas.map((d) => {
+    let evento = "aviso";
+    let externalRef: string | null = null;
+    try {
+      const p = JSON.parse(d.payload) as { event?: string; intent?: { externalRef?: string } };
+      evento = p.event ?? evento;
+      externalRef = p.intent?.externalRef ?? null;
+    } catch {
+      // payload ilegible: se muestra genérico, nunca se rompe la página
+    }
+    return {
+      id: d.id,
+      endpointUrl: urlPorEndpoint.get(d.endpointId) ?? "(webhook eliminado)",
+      evento,
+      externalRef,
+      status: d.status,
+      attempts: d.attempts,
+      nextRetryAt: d.nextRetryAt.toISOString(),
+      lastError: d.lastError,
+      createdAt: d.createdAt.toISOString(),
+    };
   });
 
   return (
@@ -81,6 +123,7 @@ export default async function ApiPage() {
             createdAt: e.createdAt.toISOString(),
           }))}
         />
+        <EntregasWebhooks entregas={filasEntregas} />
       </main>
     </>
   );

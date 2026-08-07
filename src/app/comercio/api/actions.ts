@@ -157,6 +157,54 @@ export async function desactivarWebhookEndpoint(
   });
 }
 
+/**
+ * Reenvía una entrega fallida o agotada: vuelve a PENDING con los intentos en
+ * cero, y el worker la toma en su próximo ciclo con el backoff desde el
+ * principio. No toca las DELIVERED (reenviar un aviso ya recibido duplicaría
+ * la señal en el sistema del comercio).
+ */
+export async function reenviarWebhookDelivery(
+  _previo: ResultadoApiKey | null,
+  datos: FormData
+): Promise<ResultadoApiKey> {
+  const session = await exigirAdminComercio();
+  const id = String(datos.get("id") ?? "");
+  if (!id) return { ok: false, error: "Falta la entrega." };
+
+  return withSessionTenant(session, async () => {
+    const entrega = await prisma.webhookDelivery.findUnique({
+      where: { id },
+      select: { endpointId: true, status: true },
+    });
+    if (!entrega) return { ok: false, error: "Esa entrega no existe." };
+    if (entrega.status === "DELIVERED") {
+      return { ok: false, error: "Esa entrega ya llegó — reenviarla duplicaría el aviso." };
+    }
+    if (entrega.status === "PENDING") {
+      return { ok: false, error: "Esa entrega ya está en cola." };
+    }
+
+    const endpoint = await prisma.webhookEndpoint.findUnique({
+      where: { id: entrega.endpointId },
+      select: { isActive: true },
+    });
+    if (!endpoint?.isActive) {
+      return {
+        ok: false,
+        error: "El webhook de esa entrega está inactivo: el aviso ya no tiene adónde llegar.",
+      };
+    }
+
+    await prisma.webhookDelivery.update({
+      where: { id },
+      data: { status: "PENDING", attempts: 0, nextRetryAt: new Date() },
+    });
+
+    revalidatePath("/comercio/api");
+    return { ok: true, mensaje: "Reencolada: sale en el próximo ciclo del worker (segundos)." };
+  });
+}
+
 export async function desactivarApiKey(
   _previo: ResultadoApiKey | null,
   datos: FormData
