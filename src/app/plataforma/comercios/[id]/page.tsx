@@ -248,9 +248,9 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         )}
         <p className="mt-3 text-sm leading-relaxed text-tinta-tenue">
           Si el banco ya se las entregó al comercio, él las pega en su panel de
-          activación; si gestionamos nosotros la afiliación, se cargan acá. La
-          vinculación se confirma cuando el receptor empieza a ver sus
-          notificaciones.
+          activación; si gestionamos nosotros la afiliación, se cargan acá.
+          Probar contra el banco hace el login del Identificador de Pagos: si
+          el Tesoro entrega sesión, las credenciales sirven.
         </p>
         <FormularioCredencialesBt
           organizationId={comercio.id}

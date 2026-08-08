@@ -13,6 +13,7 @@ import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
+import { probarCredencialesBt } from "../../../gateway/bt-idpagos";
 
 /**
  * Acciones del panel de plataforma. Solo `PLATFORM_ADMIN`.
@@ -218,47 +219,57 @@ export async function guardarCredencialesBt(
 }
 
 /**
- * Deja el veredicto de la vinculación BT. A diferencia de la llave BDT no
- * hay echo-test en el SaaS: la confirmación viene de la gestión con el banco
- * (el receptor empieza a ver sus notificaciones), y acá queda asentada.
+ * Prueba las credenciales BT contra el banco y deja el veredicto.
+ *
+ * El login del Identificador de Pagos ES el echo-test del Tesoro: si entrega
+ * token, las credenciales sirven — el equivalente exacto del GES0000 del BDT.
  */
-export async function marcarVinculacionBt(
-  organizationId: string,
-  confirmada: boolean
-): Promise<Resultado> {
+export async function probarVinculacionBt(organizationId: string): Promise<Resultado> {
   const session = await exigirPlataforma();
 
   const org = await db.organization.findUnique({
     where: { id: organizationId },
-    select: { btCredStatus: true },
+    select: { btCodSocio: true, btAppUser: true, btAppKeyEnc: true },
   });
   if (!org) return { ok: false, error: "Ese comercio no existe." };
-  if (org.btCredStatus === "SIN_LLAVE") {
-    return { ok: false, error: "Primero carga las credenciales BT del comercio." };
+  if (!org.btAppKeyEnc || !org.btCodSocio || !org.btAppUser) {
+    return { ok: false, error: "Ese comercio todavía no tiene credenciales BT cargadas." };
+  }
+
+  let veredicto: string;
+  let sirve = false;
+  try {
+    const r = await probarCredencialesBt({
+      codSocio: org.btCodSocio,
+      appUser: org.btAppUser,
+      appKey: descifrar(org.btAppKeyEnc),
+    });
+    sirve = r.ok;
+    veredicto = `${r.status}${r.mensaje ? ` · ${r.mensaje}` : ""} · HTTP ${r._http.status} · ${r._http.durationMs}ms`;
+  } catch (e) {
+    veredicto = `No se pudo consultar al banco: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   await db.organization.update({
     where: { id: organizationId },
     data: {
-      btCredStatus: confirmada ? "VERIFICADA" : "INVALIDA",
-      btCredVerifiedAt: confirmada ? new Date() : null,
+      btCredStatus: sirve ? "VERIFICADA" : "INVALIDA",
+      btCredVerifiedAt: sirve ? new Date() : null,
     },
   });
   await db.authKeyEvent.create({
     data: {
       organizationId,
-      action: confirmada ? "bt_verificada" : "bt_invalidada",
+      action: sirve ? "bt_verificada" : "bt_invalidada",
       actorUserId: session.user.id,
-      detail: confirmada
-        ? `Vinculación BT confirmada por ${session.user.username}`
-        : `Vinculación BT marcada inválida por ${session.user.username}`,
+      detail: veredicto,
     },
   });
 
   revalidatePath(`/plataforma/comercios/${organizationId}`);
-  return confirmada
-    ? { ok: true, mensaje: "Vinculación BT confirmada." }
-    : { ok: true, mensaje: "Credenciales BT marcadas como inválidas." };
+  return sirve
+    ? { ok: true, mensaje: `Las credenciales funcionan: el banco entregó sesión. ${veredicto}` }
+    : { ok: false, error: `El banco no las aceptó. ${veredicto}` };
 }
 
 const cuentaSchema = z.object({
