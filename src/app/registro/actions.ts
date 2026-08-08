@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { headers } from "next/headers";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
+import { esRifJuridico, validarRif } from "@/lib/rif";
 
 /**
  * Registro self-service de un comercio.
@@ -39,15 +40,7 @@ function frenar(ip: string): boolean {
 
 const schema = z.object({
   razonSocial: z.string().trim().min(3, "Pon la razón social completa").max(160),
-  rif: z
-    .string()
-    .trim()
-    .min(5, "Pon el RIF de tu empresa")
-    .max(20)
-    .refine(
-      (v) => /^[JG]\d{5,12}$/i.test(v.replace(/[^A-Za-z0-9]/g, "")),
-      "Trabajamos con personas jurídicas: RIF que empiece con J o G."
-    ),
+  rif: z.string().trim().min(5, "Pon el RIF de tu empresa").max(20),
   nombre: z.string().trim().min(2, "Pon tu nombre").max(120),
   email: z.string().trim().email("Revisa el correo").max(160),
   usuario: usernameSchema,
@@ -92,7 +85,14 @@ export async function registrarComercio(
     return { ok: false, error: "Demasiados registros seguidos. Espera un rato e intenta de nuevo." };
   }
 
-  const rif = parsed.data.rif.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  // El dígito de control se verifica acá aunque el formulario ya avise en
+  // vivo: lo del cliente es cortesía, lo que protege la base es esto.
+  const rifCheck = validarRif(parsed.data.rif);
+  if (!rifCheck.ok) return { ok: false, error: rifCheck.error };
+  if (!esRifJuridico(rifCheck.rif)) {
+    return { ok: false, error: "Trabajamos con personas jurídicas: RIF que empiece con J o G." };
+  }
+  const rif = rifCheck.rif;
   const usuario = normalizeUsername(parsed.data.usuario);
   const slug = await slugLibre(parsed.data.razonSocial);
 

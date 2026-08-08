@@ -5,6 +5,7 @@ import { z } from "zod";
 import { PrismaClient } from "@prisma/client";
 import { runAsPlatform } from "@/lib/tenant-context";
 import { prisma } from "@/lib/prisma";
+import { esRifJuridico, validarRif } from "@/lib/rif";
 
 /**
  * Recepción de solicitudes de propuesta desde la portada.
@@ -23,16 +24,9 @@ const schema = z.object({
   telefono: z.string().trim().max(40).optional().or(z.literal("")),
   // Solo personas jurídicas: el servicio valida pagos de cuentas de EMPRESA.
   // Un RIF V/E (persona natural) se rechaza acá, con explicación, antes de
-  // que alguien avance creyendo que califica.
-  rif: z
-    .string()
-    .trim()
-    .min(5, "Pon el RIF de tu empresa")
-    .max(20)
-    .refine(
-      (v) => /^[JG]/i.test(v.replace(/[^A-Za-z0-9]/g, "")),
-      "Trabajamos con personas jurídicas: el RIF debe empezar con J o G. Si tienes firma personal, escríbenos igual por el mensaje y te orientamos."
-    ),
+  // que alguien avance creyendo que califica. El dígito de control y la forma
+  // canónica los resuelve validarRif() después del parse.
+  rif: z.string().trim().min(5, "Pon el RIF de tu empresa").max(20),
   cajas: z.coerce.number().int().min(0).max(9999).optional(),
   sucursales: z.coerce.number().int().min(0).max(999).optional(),
   banco: z.string().trim().max(80).optional().or(z.literal("")),
@@ -72,6 +66,17 @@ export async function enviarSolicitud(
   }
 
   const d = parsed.data;
+
+  const rifCheck = validarRif(d.rif);
+  if (!rifCheck.ok) return { ok: false, error: rifCheck.error };
+  if (!esRifJuridico(rifCheck.rif)) {
+    return {
+      ok: false,
+      error:
+        "Trabajamos con personas jurídicas: el RIF debe empezar con J o G. Si tienes firma personal, escríbenos igual por el mensaje y te orientamos.",
+    };
+  }
+
   await runAsPlatform("alta de solicitud desde la portada", () =>
     prisma.lead.create({
       data: {
@@ -79,7 +84,7 @@ export async function enviarSolicitud(
         contacto: d.contacto,
         email: d.email.toLowerCase(),
         telefono: d.telefono || null,
-        rif: d.rif ? d.rif.toUpperCase().replace(/[^A-Z0-9]/g, "") : null,
+        rif: rifCheck.rif,
         cajas: d.cajas ?? null,
         sucursales: d.sucursales ?? null,
         banco: d.banco || null,

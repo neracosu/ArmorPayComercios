@@ -7,6 +7,7 @@ import { PrismaClient, type LeadEstado } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
+import { validarRif } from "@/lib/rif";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
@@ -47,7 +48,6 @@ export type Resultado =
   | { ok: true; mensaje: string; credenciales?: { usuario: string; password: string } }
   | { ok: false; error: string };
 
-const normalizarRif = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 
 export async function cambiarEstadoLead(
@@ -287,7 +287,11 @@ export async function convertirLead(
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
   const d = parsed.data;
-  const rif = normalizarRif(d.rif);
+  // Acá NO se exige J/G: la conversión manual es donde nosotros decidimos las
+  // excepciones (una firma personal V que orientamos desde la propuesta).
+  const rifCheck = validarRif(d.rif);
+  if (!rifCheck.ok) return { ok: false, error: rifCheck.error };
+  const rif = rifCheck.rif;
   const usuario = normalizeUsername(d.usuario);
   const slug = normalizeUsername(d.slug);
 
