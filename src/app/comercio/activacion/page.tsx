@@ -37,6 +37,10 @@ export default async function ActivacionPage() {
           status: true,
           authKeyStatus: true,
           authKeyHint: true,
+          btCredStatus: true,
+          btAppKeyHint: true,
+          btCodSocio: true,
+          btAppUser: true,
           gestionBanco: true,
           logoMime: true,
           logoUpdatedAt: true,
@@ -128,6 +132,10 @@ export default async function ActivacionPage() {
             llaveStatus={comercio?.authKeyStatus ?? "SIN_LLAVE"}
             llaveHint={comercio?.authKeyHint ?? null}
             gestionBanco={comercio?.gestionBanco ?? null}
+            btStatus={comercio?.btCredStatus ?? "SIN_LLAVE"}
+            btHint={comercio?.btAppKeyHint ?? null}
+            btCodSocio={comercio?.btCodSocio ?? null}
+            btAppUser={comercio?.btAppUser ?? null}
           />
         </div>
       </main>

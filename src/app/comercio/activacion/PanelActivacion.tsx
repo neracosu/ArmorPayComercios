@@ -14,6 +14,7 @@ import {
   subirRecaudo,
   registrarCuenta,
   cargarLlave,
+  cargarCredencialesBt,
   elegirGestionBanco,
   type ResultadoActivacion,
 } from "./actions";
@@ -223,8 +224,8 @@ function EscenarioBanco({ escenario }: { escenario: string | null }) {
         >
           <span className="font-medium">Sí, ya la tengo</span>
           <span className="mt-0.5 block text-xs text-tinta-tenue">
-            Pega tu llave abajo. Coordinamos con el banco la vinculación con
-            nuestra plataforma.
+            Pega abajo las credenciales que te dio tu banco. Coordinamos con él
+            la vinculación con nuestra plataforma.
           </span>
         </button>
         <button
@@ -248,26 +249,36 @@ function EscenarioBanco({ escenario }: { escenario: string | null }) {
   );
 }
 
+/** Estado + hint de una credencial bancaria, con el color según el veredicto. */
+function EstadoCredencial({ status, hint, textos }: { status: string; hint: string | null; textos: Record<string, string> }) {
+  return (
+    <p
+      className={`text-sm font-medium ${
+        status === "VERIFICADA" ? "text-ok" : status === "INVALIDA" ? "text-error" : "text-tinta-suave"
+      }`}
+    >
+      {textos[status] ?? status}
+      {hint && <span className="ml-2 font-mono text-tinta-tenue">{hint}</span>}
+    </p>
+  );
+}
+
 function Llave({ status, hint }: { status: string; hint: string | null }) {
   const [resultado, accion] = useFormState<ResultadoActivacion | null, FormData>(cargarLlave, null);
 
-  const texto: Record<string, string> = {
-    SIN_LLAVE: "Sin llave cargada",
-    CARGADA: "Cargada — la verificamos contra el banco en tu certificación",
-    VERIFICADA: "Verificada contra el banco",
-    INVALIDA: "El banco la rechazó — pega la llave correcta",
-  };
-
   return (
-    <div>
-      <p
-        className={`text-sm font-medium ${
-          status === "VERIFICADA" ? "text-ok" : status === "INVALIDA" ? "text-error" : "text-tinta-suave"
-        }`}
-      >
-        {texto[status] ?? status}
-        {hint && <span className="ml-2 font-mono text-tinta-tenue">{hint}</span>}
-      </p>
+    <div className="rounded-control border border-tinta-borde bg-white p-4">
+      <p className="mb-2 text-sm font-semibold text-tinta">BDT — Llave de Trabajo</p>
+      <EstadoCredencial
+        status={status}
+        hint={hint}
+        textos={{
+          SIN_LLAVE: "Sin llave cargada",
+          CARGADA: "Cargada — la verificamos contra el banco en tu certificación",
+          VERIFICADA: "Verificada contra el banco",
+          INVALIDA: "El banco la rechazó — pega la llave correcta",
+        }}
+      />
       {status !== "VERIFICADA" && (
         <form action={accion} className="mt-3 flex flex-wrap items-end gap-3">
           <div className="min-w-64 flex-1">
@@ -294,19 +305,135 @@ function Llave({ status, hint }: { status: string; hint: string | null }) {
   );
 }
 
+function CredencialesBt({
+  status,
+  hint,
+  codSocio,
+  appUser,
+}: {
+  status: string;
+  hint: string | null;
+  codSocio: string | null;
+  appUser: string | null;
+}) {
+  const [resultado, accion] = useFormState<ResultadoActivacion | null, FormData>(
+    cargarCredencialesBt,
+    null
+  );
+
+  return (
+    <div className="rounded-control border border-tinta-borde bg-white p-4">
+      <p className="mb-2 text-sm font-semibold text-tinta">Banco del Tesoro — credenciales de afiliación</p>
+      <EstadoCredencial
+        status={status}
+        hint={hint}
+        textos={{
+          SIN_LLAVE: "Sin credenciales cargadas",
+          CARGADA: "Cargadas — confirmamos la vinculación con el banco y te avisamos",
+          VERIFICADA: "Vinculación confirmada con el banco",
+          INVALIDA: "El banco no las aceptó — revísalas y pégalas de nuevo",
+        }}
+      />
+      {status !== "SIN_LLAVE" && (codSocio || appUser) && (
+        <p className="mt-1 text-xs text-tinta-tenue">
+          {codSocio && <>Cod_Socio: <span className="font-mono">{codSocio}</span></>}
+          {codSocio && appUser && " · "}
+          {appUser && <>app_user: <span className="font-mono">{appUser}</span></>}
+        </p>
+      )}
+      {status !== "VERIFICADA" && (
+        <form action={accion} className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <label htmlFor="codSocio" className="mb-1 block text-sm text-tinta-suave">
+              Cod_Socio
+            </label>
+            <input
+              id="codSocio"
+              name="codSocio"
+              required
+              autoComplete="off"
+              placeholder="45"
+              className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="appUser" className="mb-1 block text-sm text-tinta-suave">
+              app_user
+            </label>
+            <input
+              id="appUser"
+              name="appUser"
+              required
+              autoComplete="off"
+              className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm text-tinta focus:border-marca-600 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="appKey" className="mb-1 block text-sm text-tinta-suave">
+              app_key
+            </label>
+            <input
+              id="appKey"
+              name="appKey"
+              type="password"
+              required
+              autoComplete="off"
+              className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm text-tinta focus:border-marca-600 focus:outline-none"
+            />
+          </div>
+          <div className="sm:col-span-3">
+            <BotonEnviar etiqueta="Guardar credenciales" icono={<KeyRound className="h-4 w-4" aria-hidden />} />
+          </div>
+        </form>
+      )}
+      <p className="mt-2 text-xs text-tinta-tenue">
+        Son las que te entregó el Tesoro (Cod_Socio, app_user y app_key). La
+        app_key se guarda cifrada y nunca se vuelve a mostrar completa.
+      </p>
+      <Aviso r={resultado} />
+    </div>
+  );
+}
+
+/** Aviso de que ese trámite está de nuestro lado (escenario GESTIONAMOS). */
+function CajaGestionamos({ que }: { que: string }) {
+  return (
+    <div className="rounded-control bg-ok-suave/50 px-4 py-3 text-sm leading-relaxed text-ok">
+      <p className="font-medium">Estamos gestionando tu afiliación con el banco.</p>
+      <p className="mt-1">
+        Nosotros tramitamos {que} y la cargamos por ti. Cada avance lo ves
+        reflejado aquí — no tienes que hacer nada más en este paso.
+      </p>
+    </div>
+  );
+}
+
 export default function PanelActivacion({
   recaudos,
   cuentas,
   llaveStatus,
   llaveHint,
   gestionBanco,
+  btStatus,
+  btHint,
+  btCodSocio,
+  btAppUser,
 }: {
   recaudos: RecaudoVista[];
   cuentas: CuentaVista[];
   llaveStatus: string;
   llaveHint: string | null;
   gestionBanco: string | null;
+  btStatus: string;
+  btHint: string | null;
+  btCodSocio: string | null;
+  btAppUser: string | null;
 }) {
+  // La credencial que se pide depende del banco de sus cuentas: la Llave de
+  // Trabajo es un concepto BDT; el Tesoro entrega Cod_Socio/app_user/app_key.
+  // Si ya hay una credencial cargada se muestra aunque la cuenta se borre.
+  const pideBdt = cuentas.some((c) => c.banco === "BDT") || llaveStatus !== "SIN_LLAVE";
+  const pideBt = cuentas.some((c) => c.banco === "BT") || btStatus !== "SIN_LLAVE";
   return (
     <div className="space-y-8">
       <section>
@@ -344,20 +471,31 @@ export default function PanelActivacion({
         </h2>
         <p className="mb-3 mt-1 text-sm text-tinta-tenue">
           Con afiliación o sin ella, te damos la solución completa desde el
-          inicio.
+          inicio. Cada banco entrega una credencial distinta: acá te pedimos
+          la que corresponde a tus cuentas.
         </p>
         <EscenarioBanco escenario={gestionBanco} />
-        {gestionBanco === "GESTIONAMOS" && llaveStatus === "SIN_LLAVE" ? (
-          <div className="rounded-control bg-ok-suave/50 px-4 py-3 text-sm leading-relaxed text-ok">
-            <p className="font-medium">Estamos gestionando tu afiliación con el banco.</p>
-            <p className="mt-1">
-              Nosotros tramitamos las credenciales y tu Llave de Trabajo. Cada
-              avance lo ves reflejado aquí — no tienes que hacer nada más en
-              este paso.
-            </p>
-          </div>
+        {!pideBdt && !pideBt ? (
+          <p className="rounded-control border border-tinta-borde bg-tinta-fondo px-4 py-3 text-sm text-tinta-suave">
+            Registra primero tus cuentas bancarias (paso 2): según el banco te
+            pedimos la credencial que corresponde — la Llave de Trabajo del
+            BDT, o las credenciales de afiliación del Tesoro.
+          </p>
         ) : (
-          <Llave status={llaveStatus} hint={llaveHint} />
+          <div className="space-y-3">
+            {pideBdt &&
+              (gestionBanco === "GESTIONAMOS" && llaveStatus === "SIN_LLAVE" ? (
+                <CajaGestionamos que="tu Llave de Trabajo del BDT" />
+              ) : (
+                <Llave status={llaveStatus} hint={llaveHint} />
+              ))}
+            {pideBt &&
+              (gestionBanco === "GESTIONAMOS" && btStatus === "SIN_LLAVE" ? (
+                <CajaGestionamos que="tus credenciales del Tesoro (Cod_Socio, app_user y app_key)" />
+              ) : (
+                <CredencialesBt status={btStatus} hint={btHint} codSocio={btCodSocio} appUser={btAppUser} />
+              ))}
+          </div>
         )}
       </section>
     </div>

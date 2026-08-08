@@ -74,6 +74,20 @@ model Organization {
   btCodAfiliado String?
   btC2pEnabled  Boolean @default(false)
 
+  // Credenciales BT del comercio ante el Tesoro: Cod_Socio + app_user +
+  // app_key (las emite el banco por empresa; NO son el codAfiliado C2P de
+  // arriba). Cod_Socio y app_user son identificadores; la app_key es el
+  // secreto: cifrada, de solo escritura y con pista, igual que la Llave BDT.
+  // Las carga el comercio si el banco ya se las entregó, o nosotros desde la
+  // ficha si gestionamos su afiliación. El gate de activación exige cada
+  // credencial SOLO si el comercio tiene cuentas de ese banco.
+  btCodSocio       String?
+  btAppUser        String?
+  btAppKeyEnc      String?   @db.Text
+  btAppKeyHint     String?
+  btCredStatus     KeyStatus @default(SIN_LLAVE)
+  btCredVerifiedAt DateTime?
+
   // Los DOS escenarios de llegada: el comercio ya trae su afiliación bancaria
   // (llave, credenciales) o nos pide gestionarla nosotros contra el banco.
   // null = todavía no eligió. La promesa comercial es la solución completa:

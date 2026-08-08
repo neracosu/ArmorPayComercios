@@ -172,6 +172,95 @@ export async function verificarLlave(organizationId: string): Promise<Resultado>
     : { ok: false, error: `El banco no aceptó la llave. ${veredicto}` };
 }
 
+const credencialesBtSchema = z.object({
+  organizationId: z.string().min(1),
+  codSocio: z.string().trim().min(1, "Falta el Cod_Socio").max(20),
+  appUser: z.string().trim().min(2, "Falta el app_user").max(80),
+  appKey: z.string().trim().min(4, "La app_key se ve muy corta").max(200),
+});
+
+/**
+ * Carga las credenciales BT del comercio (escenario GESTIONAMOS: el banco
+ * nos las entrega a nosotros). Mismo trato que la Llave BDT: la app_key se
+ * cifra, queda CARGADA y la vinculación se confirma aparte.
+ */
+export async function guardarCredencialesBt(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  const session = await exigirPlataforma();
+  const parsed = credencialesBtSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const { organizationId, codSocio, appUser, appKey } = parsed.data;
+  await db.organization.update({
+    where: { id: organizationId },
+    data: {
+      btCodSocio: codSocio,
+      btAppUser: appUser,
+      btAppKeyEnc: cifrar(appKey),
+      btAppKeyHint: pistaDeLlave(appKey),
+      btCredStatus: "CARGADA",
+      btCredVerifiedAt: null,
+    },
+  });
+  await db.authKeyEvent.create({
+    data: {
+      organizationId,
+      action: "bt_cargada",
+      actorUserId: session.user.id,
+      detail: `Credenciales BT cargadas por ${session.user.username}`,
+    },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return { ok: true, mensaje: "Credenciales BT guardadas. Confirma la vinculación cuando el banco la valide." };
+}
+
+/**
+ * Deja el veredicto de la vinculación BT. A diferencia de la llave BDT no
+ * hay echo-test en el SaaS: la confirmación viene de la gestión con el banco
+ * (el receptor empieza a ver sus notificaciones), y acá queda asentada.
+ */
+export async function marcarVinculacionBt(
+  organizationId: string,
+  confirmada: boolean
+): Promise<Resultado> {
+  const session = await exigirPlataforma();
+
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { btCredStatus: true },
+  });
+  if (!org) return { ok: false, error: "Ese comercio no existe." };
+  if (org.btCredStatus === "SIN_LLAVE") {
+    return { ok: false, error: "Primero carga las credenciales BT del comercio." };
+  }
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: {
+      btCredStatus: confirmada ? "VERIFICADA" : "INVALIDA",
+      btCredVerifiedAt: confirmada ? new Date() : null,
+    },
+  });
+  await db.authKeyEvent.create({
+    data: {
+      organizationId,
+      action: confirmada ? "bt_verificada" : "bt_invalidada",
+      actorUserId: session.user.id,
+      detail: confirmada
+        ? `Vinculación BT confirmada por ${session.user.username}`
+        : `Vinculación BT marcada inválida por ${session.user.username}`,
+    },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return confirmada
+    ? { ok: true, mensaje: "Vinculación BT confirmada." }
+    : { ok: true, mensaje: "Credenciales BT marcadas como inválidas." };
+}
+
 const cuentaSchema = z.object({
   organizationId: z.string().min(1),
   accountNumber: z.string().trim().regex(/^\d{20}$/, "La cuenta son 20 dígitos, sin espacios"),
@@ -462,7 +551,9 @@ export async function avanzarEstadoComercio(
       status: true,
       razonSocial: true,
       authKeyStatus: true,
-      _count: { select: { accounts: { where: { isActive: true } }, users: true } },
+      btCredStatus: true,
+      accounts: { where: { isActive: true }, select: { banco: true } },
+      _count: { select: { users: true } },
     },
   });
   if (!org) return { ok: false, error: "Ese comercio no existe." };
@@ -473,16 +564,24 @@ export async function avanzarEstadoComercio(
   }
 
   // La activación es el único paso con requisitos duros: sin cuenta activa no
-  // ve pagos, y sin llave VERIFICADA su validación en vivo no funciona. Que
-  // el botón lo diga acá y no una caja fallando en producción.
+  // ve pagos, y sin credencial verificada su validación en vivo no funciona.
+  // La credencial exigida depende del BANCO de sus cuentas: la Llave de
+  // Trabajo es un concepto BDT; el Tesoro usa Cod_Socio/app_user/app_key. Un
+  // comercio solo-BT no tiene llave BDT que verificar — no se le puede pedir.
   if (paso.a === "ACTIVA") {
     // La revisora prepara; ACTIVAR es decisión de un administrador.
     if (session.user.role !== "PLATFORM_ADMIN") {
       return { ok: false, error: "Activar un comercio es decisión de un administrador de plataforma." };
     }
+    const bancos = new Set(org.accounts.map((a) => a.banco));
     const faltas: string[] = [];
-    if (org._count.accounts === 0) faltas.push("una cuenta bancaria activa");
-    if (org.authKeyStatus !== "VERIFICADA") faltas.push("la Llave de Trabajo verificada (echo-test)");
+    if (org.accounts.length === 0) faltas.push("una cuenta bancaria activa");
+    if (bancos.has("BDT") && org.authKeyStatus !== "VERIFICADA") {
+      faltas.push("la Llave de Trabajo BDT verificada (echo-test)");
+    }
+    if (bancos.has("BT") && org.btCredStatus !== "VERIFICADA") {
+      faltas.push("las credenciales BT con la vinculación confirmada");
+    }
     if (org._count.users === 0) faltas.push("el usuario administrador");
     if (faltas.length > 0) {
       return { ok: false, error: `Para activar falta: ${faltas.join(", ")}.` };

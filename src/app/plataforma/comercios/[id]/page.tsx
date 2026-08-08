@@ -5,7 +5,7 @@ import { getVerifiedSession } from "@/lib/session-guard";
 import { ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import CrearAdmin from "./CrearAdmin";
-import { FormularioLlave, FormularioCuenta } from "./LlaveYCuentas";
+import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 import CicloActivacion from "./CicloActivacion";
 import { FilaRecaudoRevision, FilaCuentaPorAprobar } from "./RevisionExpediente";
@@ -25,6 +25,13 @@ const LLAVE: Record<string, { texto: string; clase: string }> = {
   CARGADA: { texto: "Cargada, sin probar contra el banco", clase: "text-alerta" },
   VERIFICADA: { texto: "Verificada", clase: "text-ok" },
   INVALIDA: { texto: "Rechazada por el banco", clase: "text-error" },
+};
+
+const CRED_BT: Record<string, { texto: string; clase: string }> = {
+  SIN_LLAVE: { texto: "Sin credenciales cargadas", clase: "text-tinta-tenue" },
+  CARGADA: { texto: "Cargadas, vinculación sin confirmar", clase: "text-alerta" },
+  VERIFICADA: { texto: "Vinculación confirmada", clase: "text-ok" },
+  INVALIDA: { texto: "Marcadas inválidas", clase: "text-error" },
 };
 
 export default async function ComercioPage({ params }: { params: { id: string } }) {
@@ -50,6 +57,14 @@ export default async function ComercioPage({ params }: { params: { id: string } 
     texto: comercio.authKeyStatus,
     clase: "text-tinta-tenue",
   };
+  const credBt = CRED_BT[comercio.btCredStatus] ?? {
+    texto: comercio.btCredStatus,
+    clase: "text-tinta-tenue",
+  };
+  // Qué credencial le aplica: se deduce del banco de sus cuentas. Si no tiene
+  // cuentas todavía, ambas aparecen como opcionales en el checklist.
+  const tieneCuentaBdt = comercio.accounts.some((a) => a.banco === "BDT");
+  const tieneCuentaBt = comercio.accounts.some((a) => a.banco === "BT");
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
@@ -74,7 +89,8 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           ["#activacion", "Activación"],
           ["#recaudos", "Recaudos"],
           ["#cuentas", "Cuentas"],
-          ["#llave", "Llave"],
+          ["#llave", "Llave BDT"],
+          ["#credbt", "Credenciales BT"],
           ["#c2p", "C2P"],
           ["#logo", "Logo"],
           ["#usuarios", "Usuarios"],
@@ -123,10 +139,18 @@ export default async function ComercioPage({ params }: { params: { id: string } 
             {
               etiqueta:
                 comercio.authKeyStatus === "VERIFICADA"
-                  ? "Llave de Trabajo verificada"
-                  : `Llave de Trabajo (${comercio.authKeyStatus.toLowerCase().replace(/_/g, " ")})`,
+                  ? "Llave de Trabajo BDT verificada"
+                  : `Llave de Trabajo BDT (${comercio.authKeyStatus.toLowerCase().replace(/_/g, " ")})`,
               listo: comercio.authKeyStatus === "VERIFICADA",
-              requerido: true,
+              requerido: tieneCuentaBdt,
+            },
+            {
+              etiqueta:
+                comercio.btCredStatus === "VERIFICADA"
+                  ? "Credenciales BT vinculadas"
+                  : `Credenciales BT (${comercio.btCredStatus === "SIN_LLAVE" ? "sin cargar" : comercio.btCredStatus.toLowerCase()})`,
+              listo: comercio.btCredStatus === "VERIFICADA",
+              requerido: tieneCuentaBt,
             },
             {
               etiqueta: "Usuario administrador creado",
@@ -151,7 +175,12 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       <section id="llave" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
         <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
           <KeyRound className="h-4 w-4 text-marca-700" aria-hidden />
-          Llave de Trabajo del banco
+          Llave de Trabajo del BDT
+          {!tieneCuentaBdt && (
+            <span className="rounded-full bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-tenue">
+              sin cuentas BDT — no aplica
+            </span>
+          )}
         </h2>
         <p className={`mt-2 text-sm font-medium ${llave.clase}`}>{llave.texto}</p>
         {comercio.authKeyHint && (
@@ -187,6 +216,46 @@ export default async function ComercioPage({ params }: { params: { id: string } 
             </ul>
           </details>
         )}
+      </section>
+
+      {/* Credenciales BT: la contraparte de la llave para cuentas del Tesoro */}
+      <section id="credbt" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="flex items-center gap-2 font-display font-bold tracking-tight text-tinta">
+          <KeyRound className="h-4 w-4 text-marca-700" aria-hidden />
+          Credenciales BT (Cod_Socio · app_user · app_key)
+          {!tieneCuentaBt && (
+            <span className="rounded-full bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-tenue">
+              sin cuentas BT — no aplica
+            </span>
+          )}
+        </h2>
+        <p className={`mt-2 text-sm font-medium ${credBt.clase}`}>{credBt.texto}</p>
+        {(comercio.btCodSocio || comercio.btAppUser || comercio.btAppKeyHint) && (
+          <p className="mt-1 font-mono text-sm text-tinta-tenue">
+            {[
+              comercio.btCodSocio && `Cod_Socio ${comercio.btCodSocio}`,
+              comercio.btAppUser && `app_user ${comercio.btAppUser}`,
+              comercio.btAppKeyHint && `app_key ${comercio.btAppKeyHint}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+        {comercio.btCredVerifiedAt && (
+          <p className="mt-1 text-sm text-tinta-tenue">
+            Vinculación confirmada: {new Date(comercio.btCredVerifiedAt).toLocaleString("es-VE")}
+          </p>
+        )}
+        <p className="mt-3 text-sm leading-relaxed text-tinta-tenue">
+          Si el banco ya se las entregó al comercio, él las pega en su panel de
+          activación; si gestionamos nosotros la afiliación, se cargan acá. La
+          vinculación se confirma cuando el receptor empieza a ver sus
+          notificaciones.
+        </p>
+        <FormularioCredencialesBt
+          organizationId={comercio.id}
+          tieneCredenciales={comercio.btCredStatus !== "SIN_LLAVE"}
+        />
       </section>
 
       {/* Afiliación C2P: el segundo método de cobro del checkout */}

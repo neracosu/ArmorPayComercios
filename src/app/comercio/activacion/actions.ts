@@ -160,6 +160,58 @@ export async function cargarLlave(
   };
 }
 
+const credencialesBtSchema = z.object({
+  codSocio: z.string().trim().min(1, "Falta el Cod_Socio").max(20),
+  appUser: z.string().trim().min(2, "Falta el app_user").max(80),
+  appKey: z.string().trim().min(4, "La app_key se ve muy corta").max(200),
+});
+
+/**
+ * El comercio pega sus credenciales del Tesoro (Cod_Socio + app_user +
+ * app_key), si el banco ya se las entregó; si nos pidió gestionar la
+ * afiliación, las cargamos nosotros desde la ficha. Igual que la Llave BDT:
+ * quedan CARGADAS — confirmar la vinculación con el banco es paso nuestro.
+ */
+export async function cargarCredencialesBt(
+  _previo: ResultadoActivacion | null,
+  datos: FormData
+): Promise<ResultadoActivacion> {
+  const session = await exigirAdminComercio();
+
+  const parsed = credencialesBtSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  await withSessionTenant(session, async () => {
+    await prisma.organization.update({
+      // Igual que en cargarLlave: Organization es la raíz del tenant y se
+      // acota por el id de la sesión.
+      where: { id: session.user.organizationId! },
+      data: {
+        btCodSocio: parsed.data.codSocio,
+        btAppUser: parsed.data.appUser,
+        btAppKeyEnc: cifrar(parsed.data.appKey),
+        btAppKeyHint: pistaDeLlave(parsed.data.appKey),
+        btCredStatus: "CARGADA",
+        btCredVerifiedAt: null,
+      },
+    });
+    await prisma.authKeyEvent.create({
+      data: {
+        organizationId: session.user.organizationId!,
+        action: "bt_cargada",
+        actorUserId: session.user.id,
+        detail: `Credenciales BT cargadas por el comercio (${session.user.username})`,
+      },
+    });
+  });
+
+  revalidatePath("/comercio/activacion");
+  return {
+    ok: true,
+    mensaje: "Credenciales guardadas. Confirmamos la vinculación con el banco y te avisamos acá.",
+  };
+}
+
 const escenarioSchema = z.enum(["TRAE_AFILIACION", "GESTIONAMOS"]);
 
 /**
@@ -189,6 +241,6 @@ export async function elegirGestionBanco(
     mensaje:
       parsed.data === "GESTIONAMOS"
         ? "Listo: nosotros gestionamos tu afiliación con el banco. Te avisamos por acá cada avance."
-        : "Perfecto: pega tu Llave de Trabajo cuando quieras.",
+        : "Perfecto: pega las credenciales de tu banco cuando quieras.",
   };
 }

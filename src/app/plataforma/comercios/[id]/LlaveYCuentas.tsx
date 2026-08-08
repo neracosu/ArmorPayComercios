@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, Check, KeyRound, Loader2, Plus, ShieldCheck } from "lucide-react";
-import { guardarLlave, verificarLlave, agregarCuenta, type Resultado } from "../../actions";
+import {
+  guardarLlave,
+  verificarLlave,
+  guardarCredencialesBt,
+  marcarVinculacionBt,
+  agregarCuenta,
+  type Resultado,
+} from "../../actions";
 
 const campo =
   "w-full rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm focus:border-marca-600 focus:outline-none";
@@ -96,6 +103,107 @@ export function FormularioLlave({
             Verificar contra el banco
           </button>
           <Aviso r={resultadoVerif} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Credenciales BT en la ficha: las cargamos nosotros cuando gestionamos la
+ * afiliación (si el banco ya se las dio al comercio, él las pega en su panel
+ * de activación). La vinculación no tiene echo-test: se confirma a mano
+ * cuando el receptor empieza a ver sus notificaciones.
+ */
+export function FormularioCredencialesBt({
+  organizationId,
+  tieneCredenciales,
+}: {
+  organizationId: string;
+  tieneCredenciales: boolean;
+}) {
+  const [estado, accion] = useFormState<Resultado | null, FormData>(guardarCredencialesBt, null);
+  const [marcando, setMarcando] = useState(false);
+  const [resultadoMarca, setResultadoMarca] = useState<Resultado | null>(null);
+
+  const marcar = async (confirmada: boolean) => {
+    setMarcando(true);
+    setResultadoMarca(await marcarVinculacionBt(organizationId, confirmada));
+    setMarcando(false);
+  };
+
+  return (
+    <div className="mt-4">
+      <form action={accion}>
+        <input type="hidden" name="organizationId" value={organizationId} />
+        <label className="mb-1 block text-xs font-medium text-tinta-tenue">
+          {tieneCredenciales
+            ? "Reemplazar las credenciales"
+            : "Cargar las credenciales que entregó el Tesoro"}
+        </label>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <input
+            name="codSocio"
+            required
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Cod_Socio (45)"
+            className={`${campo} font-mono`}
+          />
+          <input
+            name="appUser"
+            required
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="app_user"
+            className={`${campo} font-mono`}
+          />
+          <input
+            name="appKey"
+            required
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="app_key"
+            className={`${campo} font-mono`}
+          />
+        </div>
+        <p className="mt-2 text-xs text-tinta-tenue">
+          La app_key se cifra al guardar y no se vuelve a leer completa. El
+          Cod_Socio y el app_user quedan visibles: son identificadores.
+        </p>
+        <div className="mt-3">
+          <Boton icono={KeyRound} texto="Guardar credenciales" />
+        </div>
+        <Aviso r={estado} />
+      </form>
+
+      {tieneCredenciales && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-tinta-borde pt-4">
+          <button
+            type="button"
+            disabled={marcando}
+            onClick={() => marcar(true)}
+            className="inline-flex items-center gap-2 rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo disabled:opacity-60"
+          >
+            {marcando ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <ShieldCheck className="h-4 w-4" aria-hidden />
+            )}
+            El banco confirmó la vinculación
+          </button>
+          <button
+            type="button"
+            disabled={marcando}
+            onClick={() => marcar(false)}
+            className="inline-flex items-center gap-2 rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-error hover:bg-error-suave disabled:opacity-60"
+          >
+            <AlertTriangle className="h-4 w-4" aria-hidden />
+            Marcar inválidas
+          </button>
+          <div className="w-full">
+            <Aviso r={resultadoMarca} />
+          </div>
         </div>
       )}
     </div>
