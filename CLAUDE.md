@@ -117,6 +117,7 @@ Puerto 3101, bind a 127.0.0.1.
 
 ## Notas
 
+- **Correo transaccional**: `src/lib/correo.ts`, por el SMTP local de cPanel (`info@armorpay.net:465`; `SMTP_PASS` en `.env`). Regla: `void enviarCorreo(...)` SIEMPRE después del commit en base — un fallo de correo jamás rompe el flujo que lo dispara. El buzón local siempre recibe; para que Gmail acepte hace falta SPF+DKIM publicados en el DNS (que vive en Contabo, no acá) — misma lección 550-5.7.26 del gateway.
 - Base de datos y shadow se crean con `uapi Mysql create_database` — en cPanel el usuario no puede crearlas por SQL.
 - `APP_SECRET` cifra las AuthKeys (AES-256-GCM). Si se pierde, **ninguna llave se puede descifrar**. Si se restaura un backup en otro servidor, hay que llevar el mismo `APP_SECRET`.
 - Vulnerabilidad conocida de `uuid` vía NextAuth 4: el "arreglo" es bajar a NextAuth 3, que es un cambio incompatible. Se acepta, igual que en el proyecto viejo.
