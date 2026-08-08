@@ -103,13 +103,17 @@ Es un **campo de solo escritura**: se pega y nunca se vuelve a leer completa des
 
 ```bash
 cd /home/mardenli/armorpay-cloud
-npm ci && npx prisma migrate deploy && npm run build
-pm2 reload armorpay-cloud --update-env
+npm ci && npx prisma migrate deploy && npm run deploy
 ```
 
-Puerto 3101, bind a 127.0.0.1. **Verificar que el build pasó ANTES de recargar**: encadenarlos a ciegas dejó el panel viejo caído dos minutos el 2026-06-11.
+Puerto 3101, bind a 127.0.0.1.
 
-**Ojo con el corte de servicio**: en `fork_mode` con una instancia, `pm2 reload` es stop+start, no recarga sin corte. Quien tenga un formulario abierto recibe un error. Desplegar en horario de bajo tráfico.
+**Nunca correr `npm run build` a secas en este directorio.** Pisa `.next`, que es lo que el proceso PM2 vivo está sirviendo: los chunks viejos desaparecen del disco y todo el que tenga el sitio abierto recibe `ChunkLoadError` (pasó el 2026-08-08: un build "de verificación" sin reload rompió el registro en producción; y el flujo viejo build→reload dejaba esa misma ventana rota durante todo el build en CADA deploy). Las dos vías seguras:
+
+- **Verificar que compila** (sin tocar producción): `npm run build:check` — construye en `.next-check` vía `NEXT_DIST_DIR`.
+- **Desplegar**: `npm run deploy` — construye en `.next-staging` y, solo si el build pasa, intercambia el directorio (un `mv`, instantáneo) y recarga PM2. El disco nunca queda adelantado al proceso más que ese instante.
+
+**Ojo con el corte del reload**: en `fork_mode` con una instancia, `pm2 reload` es stop+start, no recarga sin corte. Quien tenga un formulario abierto en ese segundo recibe un error. Desplegar en horario de bajo tráfico.
 
 ## Notas
 
