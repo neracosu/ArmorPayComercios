@@ -5,7 +5,8 @@ import { z } from "zod";
 import { PrismaClient } from "@prisma/client";
 import { runAsPlatform } from "@/lib/tenant-context";
 import { prisma } from "@/lib/prisma";
-import { esRifJuridico, validarRif } from "@/lib/rif";
+import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
+import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
 
 /**
  * Recepción de solicitudes de propuesta desde la portada.
@@ -93,6 +94,23 @@ export async function enviarSolicitud(
       },
     })
   );
+
+  // Aviso interno DESPUÉS del commit; un fallo de correo nunca pierde el lead.
+  void enviarCorreo({
+    para: CORREO_INTERNO,
+    asunto: `Solicitud nueva: ${d.empresa}`,
+    titulo: "Llegó una solicitud desde la portada",
+    parrafos: [
+      `Empresa: ${d.empresa} — RIF ${formatearRif(rifCheck.rif)}.`,
+      `Contacto: ${d.contacto} · ${d.email.toLowerCase()}${d.telefono ? ` · ${d.telefono}` : ""}.`,
+      ...(d.banco ? [`Banco: ${d.banco}.`] : []),
+      ...(d.cajas || d.sucursales
+        ? [`Tamaño: ${d.cajas ?? "¿?"} cajas, ${d.sucursales ?? "¿?"} sucursales.`]
+        : []),
+      ...(d.mensaje ? [`Mensaje: ${d.mensaje}`] : []),
+    ],
+    boton: { texto: "Ver la solicitud", url: `${URL_APP}/plataforma/solicitudes` },
+  });
 
   return { ok: true };
 }

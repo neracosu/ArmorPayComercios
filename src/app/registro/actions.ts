@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { headers } from "next/headers";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
-import { esRifJuridico, validarRif } from "@/lib/rif";
+import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
+import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
 
 /**
  * Registro self-service de un comercio.
@@ -116,6 +117,29 @@ export async function registrarComercio(
           role: "ORG_ADMIN",
         },
       });
+    });
+    // Correos DESPUÉS del commit; si el SMTP falla, la cuenta ya existe igual.
+    void enviarCorreo({
+      para: parsed.data.email,
+      asunto: "Tu cuenta en ArmorPay quedó creada",
+      titulo: `Bienvenido, ${parsed.data.nombre}`,
+      parrafos: [
+        `La cuenta de ${parsed.data.razonSocial} ya existe. Tu usuario para entrar es ${usuario}.`,
+        "El siguiente paso es la activación: entra, sube los documentos del comercio, registra tus cuentas bancarias y sigue el estatus de la revisión desde tu panel.",
+        "Cuando nuestro equipo apruebe el expediente y el banco confirme la afiliación, tu comercio queda activo para validar pagos.",
+      ],
+      boton: { texto: "Entrar a ArmorPay", url: `${URL_APP}/login` },
+    });
+    void enviarCorreo({
+      para: CORREO_INTERNO,
+      asunto: `Registro nuevo: ${parsed.data.razonSocial}`,
+      titulo: "Un comercio se registró solo",
+      parrafos: [
+        `${parsed.data.razonSocial} — RIF ${formatearRif(rif)}.`,
+        `Contacto: ${parsed.data.nombre} · ${parsed.data.email}.`,
+        "Nace en estado REGISTRADA; cuando suba sus recaudos va a aparecer para revisión.",
+      ],
+      boton: { texto: "Ver comercios", url: `${URL_APP}/plataforma/comercios` },
     });
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {

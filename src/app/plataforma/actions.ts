@@ -8,6 +8,8 @@ import { getVerifiedSession } from "@/lib/session-guard";
 import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { validarRif } from "@/lib/rif";
+import { enviarCorreo, URL_APP } from "@/lib/correo";
+import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
@@ -47,6 +49,19 @@ async function exigirRevision() {
 export type Resultado =
   | { ok: true; mensaje: string; credenciales?: { usuario: string; password: string } }
   | { ok: false; error: string };
+
+/**
+ * Correos de los administradores del comercio, para notificarles los hitos
+ * del ciclo. Puede venir vacío (los admins creados a mano no llevan email):
+ * en ese caso simplemente no se envía nada.
+ */
+async function correosAdminsComercio(organizationId: string): Promise<string[]> {
+  const admins = await db.user.findMany({
+    where: { organizationId, role: "ORG_ADMIN", isActive: true, email: { not: null } },
+    select: { email: true },
+  });
+  return admins.flatMap((a) => (a.email ? [a.email] : []));
+}
 
 
 
@@ -445,6 +460,7 @@ export async function avanzarEstadoComercio(
     where: { id: organizationId },
     select: {
       status: true,
+      razonSocial: true,
       authKeyStatus: true,
       _count: { select: { accounts: { where: { isActive: true } }, users: true } },
     },
@@ -479,6 +495,43 @@ export async function avanzarEstadoComercio(
   });
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
+
+  const destinos = await correosAdminsComercio(organizationId);
+  if (destinos.length > 0) {
+    const AVANCE: Record<string, { asunto: string; titulo: string; detalle: string }> = {
+      RECAUDOS_COMPLETOS: {
+        asunto: "Tu expediente está completo",
+        titulo: "Expediente completo",
+        detalle: "Revisamos tus documentos y el expediente quedó completo. El siguiente paso es enviar tu afiliación al banco.",
+      },
+      ENVIADA_AL_BANCO: {
+        asunto: "Tu afiliación va camino al banco",
+        titulo: "Solicitud enviada al banco",
+        detalle: "Enviamos tu solicitud de afiliación al banco. Te avisamos apenas la procese; este paso depende de sus tiempos.",
+      },
+      CERTIFICACION: {
+        asunto: "El banco te afilió — falta la certificación",
+        titulo: "En certificación",
+        detalle: "El banco procesó tu afiliación y estamos certificando que todo funcione de punta a punta antes de activarte.",
+      },
+      ACTIVA: {
+        asunto: "Tu comercio está ACTIVO en ArmorPay",
+        titulo: "¡Listo para cobrar!",
+        detalle: "Tu comercio quedó activo: tus cajas ya pueden validar pagos y tu API ya responde. Entra y abre tu primer turno.",
+      },
+    };
+    const correo = AVANCE[paso.a];
+    if (correo) {
+      void enviarCorreo({
+        para: destinos,
+        asunto: correo.asunto,
+        titulo: correo.titulo,
+        parrafos: [`Novedades de ${org.razonSocial}:`, correo.detalle],
+        boton: { texto: "Entrar a ArmorPay", url: `${URL_APP}/login` },
+      });
+    }
+  }
+
   return {
     ok: true,
     mensaje:
@@ -509,6 +562,19 @@ export async function rechazarComercio(
   await db.organization.update({ where: { id: organizationId }, data: { status: "RECHAZADA" } });
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
+
+  const destinos = await correosAdminsComercio(organizationId);
+  if (destinos.length > 0) {
+    void enviarCorreo({
+      para: destinos,
+      asunto: "No pudimos aprobar tu solicitud",
+      titulo: "Solicitud rechazada",
+      parrafos: [
+        "Tu solicitud de afiliación no pudo aprobarse en esta oportunidad.",
+        "Si crees que es un error o quieres saber el motivo, respóndenos a este correo y lo revisamos contigo.",
+      ],
+    });
+  }
   return { ok: true, mensaje: "Comercio rechazado." };
 }
 
@@ -533,10 +599,30 @@ export async function revisarRecaudo(
   const r = await db.recaudo.update({
     where: { id },
     data: { status: veredicto === "aprobar" ? "APROBADO" : "RECHAZADO", nota: nota || null },
-    select: { organizationId: true },
+    select: { organizationId: true, tipo: true },
   });
 
   revalidatePath(`/plataforma/comercios/${r.organizationId}`);
+
+  // Solo el rechazo notifica: exige una acción del comercio. La aprobación
+  // silenciosa evita ruido — el hito que sí se celebra es el avance de ciclo.
+  if (veredicto === "rechazar") {
+    const destinos = await correosAdminsComercio(r.organizationId);
+    if (destinos.length > 0) {
+      const titulo = RECAUDOS_REQUERIDOS.find((x) => x.tipo === r.tipo)?.titulo ?? r.tipo;
+      void enviarCorreo({
+        para: destinos,
+        asunto: "Un documento necesita corrección",
+        titulo: "Documento por corregir",
+        parrafos: [
+          `El documento "${titulo}" fue revisado y necesita corrección.`,
+          `Motivo: ${nota}`,
+          "Entra al panel de activación y súbelo de nuevo corregido; la revisión sigue apenas llegue.",
+        ],
+        boton: { texto: "Ir a la activación", url: `${URL_APP}/comercio/activacion` },
+      });
+    }
+  }
   return { ok: true, mensaje: veredicto === "aprobar" ? "Documento aprobado." : "Documento rechazado con motivo." };
 }
 
@@ -557,6 +643,19 @@ export async function aprobarCuenta(
   });
 
   revalidatePath(`/plataforma/comercios/${r.organizationId}`);
+
+  const destinos = await correosAdminsComercio(r.organizationId);
+  if (destinos.length > 0) {
+    void enviarCorreo({
+      para: destinos,
+      asunto: `Tu cuenta …${r.accountNumber.slice(-4)} fue aprobada`,
+      titulo: "Cuenta bancaria aprobada",
+      parrafos: [
+        `La cuenta terminada en ${r.accountNumber.slice(-4)} quedó aprobada: desde ahora los pagos que reciba se atribuyen a tu comercio.`,
+      ],
+      boton: { texto: "Ver mi activación", url: `${URL_APP}/comercio/activacion` },
+    });
+  }
   return {
     ok: true,
     mensaje: `Cuenta …${r.accountNumber.slice(-4)} aprobada: la ingesta ya le atribuye pagos.`,
