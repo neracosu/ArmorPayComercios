@@ -1,11 +1,20 @@
 <?php
 /**
  * Plugin Name: ArmorPay para WooCommerce
+ * Plugin URI: https://armorpay.net/docs/api
  * Description: Cobra en bolívares por pago móvil (referencia) y C2P, validado al instante por ArmorPay. El pedido se confirma solo cuando el banco confirma.
  * Version: 1.0.0
- * Author: ArmorPay
+ * Author: ArmorPay — Plataforma de validación de pagos
+ * Author URI: https://armorpay.net
+ * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
  * Requires Plugins: woocommerce
- * Text Domain: armorpay
+ * Text Domain: armorpay-woocommerce
+ * Update URI: https://armorpay.net/descargas/armorpay-woocommerce.json
+ *
+ * Copyright (c) 2026 ArmorPay (armorpay.net). Soporte: info@armorpay.net.
  *
  * El plugin es deliberadamente TONTO: no valida nada él mismo. Crea el cobro
  * por la API de ArmorPay (server-side, la llave nunca toca el navegador),
@@ -16,6 +25,79 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// HPOS (almacén de pedidos de alto rendimiento): todo el acceso a pedidos va
+// por el CRUD de WooCommerce, así que se declara compatible — sin esto, los
+// WooCommerce nuevos (HPOS por defecto) marcan el plugin como incompatible.
+add_action('before_woocommerce_init', function () {
+    if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class)) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+    }
+});
+
+// Actualizaciones desde armorpay.net (no desde wordpress.org): el header
+// `Update URI` hace que WP pregunte por este filtro; se compara contra el
+// manifiesto publicado y, si hay versión nueva, WP la ofrece en el dashboard.
+// La URL del manifiesto es fija a propósito: las actualizaciones vienen de
+// nosotros aunque el comercio cambie el servidor de API en los ajustes.
+define('ARMORPAY_WC_MANIFEST_URL', 'https://armorpay.net/descargas/armorpay-woocommerce.json');
+
+function armorpay_wc_manifest()
+{
+    $res = wp_remote_get(ARMORPAY_WC_MANIFEST_URL, ['timeout' => 10]);
+    if (is_wp_error($res) || wp_remote_retrieve_response_code($res) !== 200) {
+        return null; // sin manifiesto no hay actualización: nunca romper el chequeo
+    }
+    $m = json_decode(wp_remote_retrieve_body($res), true);
+    return (!empty($m['version']) && !empty($m['package'])) ? $m : null;
+}
+
+add_filter('update_plugins_armorpay.net', function ($update, $plugin_data, $plugin_file) {
+    if ($plugin_file !== plugin_basename(__FILE__)) {
+        return $update;
+    }
+    $manifest = armorpay_wc_manifest();
+    if (!$manifest || !version_compare($manifest['version'], $plugin_data['Version'], '>')) {
+        return $update;
+    }
+    return $manifest;
+}, 10, 3);
+
+// Ficha de «Ver detalles de la versión X» — sin esto, ese enlace da error
+// porque WP intenta buscar el plugin en wordpress.org.
+add_filter('plugins_api', function ($result, $action, $args) {
+    if ($action !== 'plugin_information' || empty($args->slug) || $args->slug !== 'armorpay-woocommerce') {
+        return $result;
+    }
+    $m = armorpay_wc_manifest();
+    if (!$m) {
+        return $result;
+    }
+    return (object) [
+        'name'          => 'ArmorPay para WooCommerce',
+        'slug'          => 'armorpay-woocommerce',
+        'version'       => $m['version'],
+        'author'        => '<a href="https://armorpay.net">ArmorPay</a>',
+        'homepage'      => 'https://armorpay.net/docs/api',
+        'download_link' => $m['package'],
+        'requires'      => isset($m['requires']) ? $m['requires'] : '6.0',
+        'requires_php'  => isset($m['requires_php']) ? $m['requires_php'] : '7.4',
+        'tested'        => isset($m['tested']) ? $m['tested'] : '',
+        'sections'      => [
+            'description' => 'Cobra en bolívares por pago móvil (referencia) y C2P, validado '
+                . 'al instante por ArmorPay. Documentación: https://armorpay.net/docs/api',
+        ],
+    ];
+}, 10, 3);
+
+// Auto-update activado por defecto: el comercio no tiene que hacer nada para
+// recibir versiones nuevas (WP las aplica en su cron, ~2 chequeos al día).
+add_filter('auto_update_plugin', function ($update, $item) {
+    if (isset($item->slug) && 'armorpay-woocommerce' === $item->slug) {
+        return true;
+    }
+    return $update;
+}, 10, 2);
 
 add_action('plugins_loaded', 'armorpay_init_gateway', 11);
 add_filter('woocommerce_payment_gateways', function ($gateways) {
@@ -43,7 +125,8 @@ function armorpay_init_gateway()
             $this->id                 = 'armorpay';
             $this->method_title       = 'ArmorPay';
             $this->method_description = 'Pago móvil validado al instante (referencia y C2P). '
-                . 'Crea tu llave de API y tu webhook en el panel de ArmorPay → API.';
+                . 'Crea tu llave de API y tu webhook en el panel de ArmorPay → API. '
+                . 'Documentación: https://armorpay.net/docs/api · Soporte: info@armorpay.net';
             $this->has_fields         = false;
 
             $this->init_form_fields();

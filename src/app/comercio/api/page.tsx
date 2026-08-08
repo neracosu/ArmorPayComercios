@@ -103,7 +103,14 @@ export default async function ApiPage() {
           <a href="/docs/api" target="_blank" className="font-medium text-marca-700 hover:underline">
             armorpay.net/docs/api
           </a>
-          .
+          . ¿Tu tienda es WooCommerce?{" "}
+          <a
+            href="/descargas/armorpay-woocommerce.zip"
+            className="font-medium text-marca-700 hover:underline"
+          >
+            Descarga el plugin (.zip)
+          </a>
+          , súbelo a tu WordPress y solo te falta pegar la llave y el webhook.
         </p>
         <GestionApiKeys
           llaves={llaves.map((k) => ({

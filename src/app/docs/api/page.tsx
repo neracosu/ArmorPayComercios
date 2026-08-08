@@ -271,8 +271,15 @@ window.addEventListener("message", (e) => {
 # La confirmación de VERDAD llega por webhook (abajo) o consultando
 # GET /intents/{id}: nunca confíes solo en el postMessage del navegador.`}</pre>
           <p className="mt-3 text-sm leading-relaxed text-tinta-tenue">
-            ¿Usas WooCommerce? Nuestro plugin hace todo esto por ti: pide el archivo al
-            equipo de ArmorPay, configura tu llave y tu webhook, y listo.
+            ¿Usas WooCommerce? Nuestro plugin hace todo esto por ti:{" "}
+            <a
+              href="/descargas/armorpay-woocommerce.zip"
+              className="font-medium text-marca-700 hover:underline"
+            >
+              descarga el plugin (.zip)
+            </a>
+            , súbelo en Plugins → Añadir nuevo → Subir plugin, configura tu llave y tu
+            webhook, y listo.
           </p>
         </section>
 

@@ -9,6 +9,7 @@
     "deploy": "NEXT_DIST_DIR=.next-staging next build && rm -rf .next && mv .next-staging .next && pm2 reload armorpay-cloud --update-env",
     "start": "next start -p 3101",
     "lint": "next lint",
+    "plugin:zip": "node scripts/plugin-zip.mjs",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "postinstall": "prisma generate"

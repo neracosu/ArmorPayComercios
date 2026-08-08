@@ -1,0 +1,10 @@
+{
+  "id": "armorpay.net/armorpay-woocommerce",
+  "slug": "armorpay-woocommerce",
+  "version": "1.0.0",
+  "url": "https://armorpay.net/docs/api",
+  "package": "https://armorpay.net/descargas/armorpay-woocommerce.zip",
+  "requires": "6.0",
+  "requires_php": "7.4",
+  "tested": "6.6"
+}
