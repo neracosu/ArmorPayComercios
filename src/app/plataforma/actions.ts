@@ -215,7 +215,7 @@ export async function guardarCredencialesBt(
   });
 
   revalidatePath(`/plataforma/comercios/${organizationId}`);
-  return { ok: true, mensaje: "Credenciales BT guardadas. Confirma la vinculación cuando el banco la valide." };
+  return { ok: true, mensaje: "Credenciales BT guardadas. Pruébalas contra el banco para dejar el veredicto." };
 }
 
 /**
