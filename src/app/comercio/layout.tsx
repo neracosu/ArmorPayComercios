@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
+import AutoRefresco from "@/components/AutoRefresco";
 
 /**
  * Banner del estado del alta, arriba de TODO el panel del comercio. La página
@@ -49,6 +50,8 @@ export default async function ComercioLayout({ children }: { children: React.Rea
 
   return (
     <>
+      {/* El comercio ve avanzar su activación y sus números sin recargar */}
+      <AutoRefresco intervaloMs={45_000} />
       {(aviso || rechazada) && (
         <div className={`px-6 py-2.5 text-sm text-white ${rechazada ? "bg-error" : "bg-marca-700"}`}>
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-1">

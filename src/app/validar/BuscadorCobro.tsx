@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, ArrowDownLeft, Check, Loader2, Search, TriangleAlert } from "lucide-react";
 import { buscar, cobrar, type ResultadoBusqueda, type ResultadoCobro } from "./actions";
@@ -16,15 +16,14 @@ function hora(hhmmss: string): string {
   return hhmmss.length >= 4 ? `${hhmmss.slice(0, 2)}:${hhmmss.slice(2, 4)}` : hhmmss;
 }
 
-function BotonBuscar() {
-  const { pending } = useFormStatus();
+function BotonBuscar({ ocupado }: { ocupado: boolean }) {
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={ocupado}
       className="inline-flex shrink-0 items-center gap-2 rounded-control bg-marca-700 px-5 py-3 font-medium text-white transition-colors hover:bg-marca-900 disabled:opacity-60"
     >
-      {pending ? (
+      {ocupado ? (
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
       ) : (
         <Search className="h-5 w-5" aria-hidden />
@@ -158,12 +157,77 @@ function FilaPago({ pago, hayTurno, unico }: { pago: any; hayTurno: boolean; uni
   );
 }
 
+/** Cuánto esperamos al banco re-buscando solos antes de rendirnos. */
+const ESPERA_MAX_S = 90;
+const SONDEO_S = 5;
+
 export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
-  const [resultado, accion] = useFormState<ResultadoBusqueda | null, FormData>(buscar, null);
+  const [resultado, setResultado] = useState<ResultadoBusqueda | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  // Referencia que estamos esperando que el banco reporte (null = sin espera).
+  const [esperando, setEsperando] = useState<string | null>(null);
+  const [segundos, setSegundos] = useState(0);
+  const [rendido, setRendido] = useState(false);
+  const enVuelo = useRef(false);
+
+  async function ejecutarBusqueda(referencia: string): Promise<ResultadoBusqueda> {
+    const fd = new FormData();
+    fd.set("referencia", referencia);
+    return buscar(null, fd);
+  }
+
+  async function manejarSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const referencia = String(new FormData(e.currentTarget).get("referencia") ?? "").trim();
+    if (!referencia) return;
+    setBuscando(true);
+    setEsperando(null);
+    setRendido(false);
+    const r = await ejecutarBusqueda(referencia);
+    setResultado(r);
+    setBuscando(false);
+    // Sin resultado no es un fin: el webhook del banco tarda segundos y el
+    // gateway lo trae en su próximo ciclo. La página se queda esperándolo —
+    // la operadora escribe la referencia UNA vez y no toca más nada.
+    if (r.ok && r.pagos.length === 0) {
+      setSegundos(0);
+      setEsperando(referencia);
+    }
+  }
+
+  useEffect(() => {
+    if (!esperando) return;
+    const inicio = Date.now();
+    const timer = setInterval(async () => {
+      const transcurrido = Math.round((Date.now() - inicio) / 1000);
+      setSegundos(transcurrido);
+      if (transcurrido >= ESPERA_MAX_S) {
+        setEsperando(null);
+        setRendido(true);
+        return;
+      }
+      if (transcurrido % SONDEO_S !== 0 || enVuelo.current) return;
+      enVuelo.current = true;
+      try {
+        const r = await ejecutarBusqueda(esperando);
+        if (r.ok && r.pagos.length > 0) {
+          setResultado(r);
+          setEsperando(null);
+        } else if (!r.ok) {
+          // Sesión vencida u otro error real: parar y mostrarlo.
+          setResultado(r);
+          setEsperando(null);
+        }
+      } finally {
+        enVuelo.current = false;
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [esperando]);
 
   return (
     <>
-      <form action={accion} className="flex gap-3">
+      <form onSubmit={manejarSubmit} className="flex gap-3">
         <div className="flex-1">
           <label htmlFor="referencia" className="mb-1.5 block text-sm font-medium text-tinta-suave">
             Últimos dígitos de la referencia
@@ -181,11 +245,15 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
               // Esc limpia y deja el campo listo para el siguiente cliente.
               if (e.key === "Escape") (e.target as HTMLInputElement).value = "";
             }}
+            onChange={() => {
+              // Escribir una referencia nueva cancela la espera de la anterior.
+              if (esperando) setEsperando(null);
+            }}
             className="w-full rounded-control border border-tinta-borde bg-white px-4 py-3 text-lg tracking-wider text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
           />
         </div>
         <div className="flex items-end">
-          <BotonBuscar />
+          <BotonBuscar ocupado={buscando} />
         </div>
       </form>
 
@@ -196,13 +264,47 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
         </p>
       )}
 
-      {resultado?.ok && resultado.pagos.length === 0 && (
+      {esperando && (
+        <div className="mt-6 rounded-card border border-dashed border-marca-600/40 bg-white p-8 text-center">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-marca-700" aria-hidden />
+          <p className="mt-3 font-medium text-tinta">
+            Esperando al banco… {segundos}s
+          </p>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
+            La referencia todavía no llega. Seguimos revisando solos cada{" "}
+            {SONDEO_S} segundos — no hace falta tocar nada.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEsperando(null)}
+            className="mt-4 rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {!esperando && resultado?.ok && resultado.pagos.length === 0 && (
         <div className="mt-6 rounded-card border border-dashed border-tinta-borde bg-white p-8 text-center">
           <p className="font-medium text-tinta">No aparece ningún pago con esos dígitos</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
-            Puede que el banco todavía no lo haya reportado. Espera unos segundos
-            y vuelve a buscar. Si sigue sin aparecer, el pago no entró a la cuenta.
+            {rendido
+              ? `Lo esperamos ${ESPERA_MAX_S} segundos y el banco no lo reportó. Verifica con el cliente que el pago se hizo a la cuenta correcta.`
+              : "Puede que el banco todavía no lo haya reportado. Si sigue sin aparecer, el pago no entró a la cuenta."}
           </p>
+          {rendido && (
+            <button
+              type="button"
+              onClick={() => {
+                setRendido(false);
+                setSegundos(0);
+                setEsperando(resultado.sufijo);
+              }}
+              className="mt-4 rounded-control bg-marca-700 px-4 py-2 text-sm font-medium text-white hover:bg-marca-900"
+            >
+              Seguir esperando
+            </button>
+          )}
         </div>
       )}
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BarChart3, Building2, Globe, Inbox, ShieldAlert, Users } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import CerrarSesion from "@/components/CerrarSesion";
+import AutoRefresco from "@/components/AutoRefresco";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export default async function PlataformaLayout({ children }: { children: React.R
 
   return (
     <>
+      {/* Al volver a la pestaña, contadores y expedientes se actualizan solos */}
+      <AutoRefresco />
       <header className="border-b border-tinta-borde bg-tinta">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <div className="flex items-center gap-2">
