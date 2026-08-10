@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { planPorClave, INFINITO, type DefinicionPlan } from "./planes";
+import { SOPORTE_EMAIL } from "./soporte";
 
 /**
  * Planes y consumo — decisión de cobro del 2026-07-20.
@@ -54,7 +55,7 @@ export async function puedeCrearCaja(organizationId: string): Promise<Veredicto>
     ? { permitido: true }
     : {
         permitido: false,
-        motivo: `Tu plan ${plan.nombre} incluye ${plan.cajas} cajas. Escríbenos para ampliarlo.`,
+        motivo: `Tu plan ${plan.nombre} incluye ${plan.cajas} cajas. Escríbenos a ${SOPORTE_EMAIL} para ampliarlo.`,
       };
 }
 
@@ -68,7 +69,7 @@ export async function puedeCrearSucursal(organizationId: string): Promise<Veredi
     ? { permitido: true }
     : {
         permitido: false,
-        motivo: `Tu plan ${plan.nombre} incluye ${plan.sucursales} sucursal(es). Escríbenos para ampliarlo.`,
+        motivo: `Tu plan ${plan.nombre} incluye ${plan.sucursales} sucursal(es). Escríbenos a ${SOPORTE_EMAIL} para ampliarlo.`,
       };
 }
 

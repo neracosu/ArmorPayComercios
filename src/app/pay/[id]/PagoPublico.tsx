@@ -531,7 +531,10 @@ export default function PagoPublico({ intent, comercio, c2pDisponible, bancosC2p
 
       <p className="mt-6 text-xs text-tinta-tenue">
         Validado por <span className="font-medium text-tinta-suave">ArmorPay</span> ·
-        plataforma de validación de pagos
+        plataforma de validación de pagos ·{" "}
+        <a href="/privacidad" target="_blank" className="underline underline-offset-2 hover:text-tinta">
+          privacidad
+        </a>
       </p>
     </main>
   );

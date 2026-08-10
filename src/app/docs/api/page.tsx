@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 
 export const metadata = {
   title: "API de ArmorPay — documentación para integradores",
@@ -367,7 +368,7 @@ function verificar($secreto, $timestamp, $firma, $bodyCrudo) {
 
         <p className="mt-14 border-t border-tinta-borde pt-6 text-sm text-tinta-tenue">
           ¿Algo no cuadra entre estas docs y la API? Es un bug nuestro — escríbenos
-          desde <Link href="/propuesta" className="text-marca-700 hover:underline">la página de contacto</Link>.
+          a <a href={`mailto:${SOPORTE_EMAIL}`} className="text-marca-700 hover:underline">{SOPORTE_EMAIL}</a>.
         </p>
       </main>
     </div>

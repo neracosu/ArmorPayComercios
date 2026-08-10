@@ -182,6 +182,27 @@ export default function FormularioRegistro() {
         </div>
       </div>
 
+      <label className="flex cursor-pointer items-start gap-2.5 text-sm text-tinta-suave">
+        <input
+          type="checkbox"
+          name="terminos"
+          value="1"
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 accent-marca-700"
+        />
+        <span>
+          Acepto los{" "}
+          <a href="/terminos" target="_blank" className="font-medium text-marca-700 hover:underline">
+            términos del servicio
+          </a>{" "}
+          y la{" "}
+          <a href="/privacidad" target="_blank" className="font-medium text-marca-700 hover:underline">
+            política de privacidad
+          </a>
+          .
+        </span>
+      </label>
+
       {resultado && !resultado.ok && (
         <p className="flex items-start gap-2 rounded-control bg-error-suave px-3 py-2.5 text-sm text-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

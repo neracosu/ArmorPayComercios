@@ -7,6 +7,7 @@ import { runAsPlatform } from "@/lib/tenant-context";
 import { prisma } from "@/lib/prisma";
 import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
 import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 
 /**
  * Recepción de solicitudes de propuesta desde la portada.
@@ -62,7 +63,7 @@ export async function enviarSolicitud(
   if (recientes >= MAX_POR_IP_POR_HORA) {
     return {
       ok: false,
-      error: "Ya recibimos varias solicitudes desde acá. Escríbenos por correo si es urgente.",
+      error: `Ya recibimos varias solicitudes desde acá. Escríbenos a ${SOPORTE_EMAIL} si es urgente.`,
     };
   }
 

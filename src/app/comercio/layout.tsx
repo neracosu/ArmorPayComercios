@@ -3,6 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import AutoRefresco from "@/components/AutoRefresco";
+import ContactoSoporte from "@/components/ContactoSoporte";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 
 /**
  * Banner del estado del alta, arriba de TODO el panel del comercio. La página
@@ -60,7 +62,7 @@ export default async function ComercioLayout({ children }: { children: React.Rea
                 {rechazada ? "Solicitud rechazada:" : `Activación en curso (${aviso!.progreso}):`}
               </span>{" "}
               {rechazada
-                ? "escríbenos desde la página de propuesta si crees que es un error."
+                ? `escríbenos a ${SOPORTE_EMAIL} si crees que es un error.`
                 : aviso!.texto}
             </p>
             {!rechazada && (
@@ -76,6 +78,10 @@ export default async function ComercioLayout({ children }: { children: React.Rea
         </div>
       )}
       {children}
+      {/* El soporte a la vista en TODO el panel: en este mercado es parte del producto. */}
+      <footer className="mx-auto max-w-3xl px-6 pb-8 pt-2 text-sm text-tinta-tenue">
+        ¿Necesitas ayuda? <ContactoSoporte compacto />
+      </footer>
     </>
   );
 }

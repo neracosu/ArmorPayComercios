@@ -20,6 +20,7 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://armorpay.net"),
   title: "ArmorPay — Plataforma de validación de pagos",
   description:
     "Confirma en segundos que el pago móvil llegó a tu cuenta, con control por caja, turnos y cierre.",

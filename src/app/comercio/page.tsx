@@ -5,6 +5,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { inicioDelDia } from "@/lib/operacion";
 import { consumoDelMes } from "@/lib/limites";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 
@@ -141,8 +142,11 @@ export default async function ComercioInicioPage() {
             {avisoLlave && (
               <p className="flex items-start gap-2 rounded-card border border-error/30 bg-error-suave px-4 py-3 text-sm text-error">
                 <KeyRound className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                {avisoLlave} — las cajas no pueden cobrar hasta resolverlo.
-                Escríbenos si el banco te la cambió.
+                {avisoLlave} — las cajas no pueden cobrar hasta resolverlo.{" "}
+                <a href={`mailto:${SOPORTE_EMAIL}`} className="font-medium underline underline-offset-2">
+                  Escríbenos
+                </a>{" "}
+                si el banco te la cambió.
               </p>
             )}
             {duplicados > 0 && (

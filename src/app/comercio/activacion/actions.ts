@@ -6,6 +6,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { cifrar, pistaDeLlave } from "@/lib/crypto";
 import { RECAUDO_MAX_BYTES, RECAUDOS_REQUERIDOS, tipoDeDocumento } from "@/lib/recaudos";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 
 /**
  * Autogestión de la activación: el comercio arma su propio expediente.
@@ -104,7 +105,7 @@ export async function registrarCuenta(
       if ((e as { code?: string }).code === "P2002") {
         return {
           ok: false,
-          error: "Esa cuenta ya está registrada en la plataforma. Si es tuya, escríbenos.",
+          error: `Esa cuenta ya está registrada en la plataforma. Si es tuya, escríbenos a ${SOPORTE_EMAIL}.`,
         };
       }
       throw e;

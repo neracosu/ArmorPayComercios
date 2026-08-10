@@ -69,6 +69,12 @@ model Organization {
   // números de trámite con el banco, contexto que no cabe en un campo.
   notasInternas    String? @db.Text
 
+  // Aceptación de términos en el registro self-service: cuándo y qué versión
+  // estaba vigente. Los comercios de alta manual no la llevan — su relación
+  // se rige por el acuerdo comercial directo.
+  terminosAceptadosAt DateTime?
+  terminosVersion     String?
+
   // Llave de Trabajo del BDT. El banco la emite POR RIF, no por cuenta: una
   // organización con varias cuentas comparte llave. Campo de SOLO ESCRITURA:
   // se pega y nunca se vuelve a leer completa desde la interfaz.

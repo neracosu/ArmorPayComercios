@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PLANES } from "@/lib/planes";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
 import {
   ArrowRight,
   Bell,
@@ -621,8 +622,11 @@ export default function Portada() {
             Hoy operamos con el <strong className="font-medium text-tinta-suave">Banco
             Digital de los Trabajadores (BDT)</strong> y el{" "}
             <strong className="font-medium text-tinta-suave">Banco del Tesoro</strong> —
-            incluido su Botón de Pago (C2P). Si cobras en otro banco, escríbenos
-            igual y te decimos con franqueza si podemos.
+            incluido su Botón de Pago (C2P). Si cobras en otro banco,{" "}
+            <a href={`mailto:${SOPORTE_EMAIL}`} className="font-medium text-marca-700 hover:underline">
+              escríbenos igual
+            </a>{" "}
+            y te decimos con franqueza si podemos.
           </p>
           <p className="mt-2 text-sm text-tinta-tenue">
             El servicio es para <strong className="font-medium text-tinta-suave">personas
@@ -639,6 +643,8 @@ export default function Portada() {
             <Link href="/propuesta" className="text-tinta-suave hover:text-tinta">Pedir una propuesta</Link>
             <Link href="/docs/api" className="text-tinta-suave hover:text-tinta">Documentación de la API</Link>
             <Link href="/login" className="text-tinta-suave hover:text-tinta">Entrar</Link>
+            <Link href="/terminos" className="text-tinta-suave hover:text-tinta">Términos</Link>
+            <Link href="/privacidad" className="text-tinta-suave hover:text-tinta">Privacidad</Link>
           </nav>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-tinta-tenue">
             Nunca custodiamos ni movemos fondos: el dinero va directo del que

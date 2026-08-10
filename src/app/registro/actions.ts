@@ -7,6 +7,8 @@ import { headers } from "next/headers";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
 import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
+import { SOPORTE_EMAIL } from "@/lib/soporte";
+import { TERMINOS_VERSION } from "@/lib/legales";
 
 /**
  * Registro self-service de un comercio.
@@ -51,6 +53,10 @@ const schema = z.object({
     .max(72, "Máximo 72 caracteres"),
   // Honeypot: invisible para una persona, irresistible para un bot.
   sitioWeb: z.string().max(0).optional(),
+  // El checkbox de términos: sin aceptación explícita no hay cuenta.
+  terminos: z.literal("1", {
+    message: "Tienes que aceptar los términos para crear la cuenta",
+  }),
 });
 
 /** Slug único derivado de la razón social; con sufijo si ya existe. */
@@ -107,6 +113,9 @@ export async function registrarComercio(
           // El que registra ES el contacto: la ficha nace con a quién llamar.
           contactoNombre: parsed.data.nombre,
           contactoEmail: parsed.data.email,
+          // Constancia de la aceptación: cuándo y qué versión estaba vigente.
+          terminosAceptadosAt: new Date(),
+          terminosVersion: TERMINOS_VERSION,
         },
       });
       // Sin sucursal no se puede abrir turno: nace con la Principal.
@@ -155,7 +164,7 @@ export async function registrarComercio(
         return {
           ok: false,
           error:
-            "Ya existe un comercio registrado con ese RIF. Si es el tuyo, escríbenos desde la página de propuesta.",
+            `Ya existe un comercio registrado con ese RIF. Si es el tuyo, escríbenos a ${SOPORTE_EMAIL}.`,
         };
       }
       if (target.includes("username")) {

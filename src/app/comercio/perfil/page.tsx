@@ -7,6 +7,7 @@ import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 import GestionLogo from "./GestionLogo";
 import GestionContacto from "./GestionContacto";
+import ContactoSoporte from "@/components/ContactoSoporte";
 
 export const dynamic = "force-dynamic";
 
@@ -203,7 +204,7 @@ export default async function PerfilPage() {
           </ul>
           <p className="mt-3 text-xs text-tinta-tenue">
             Por seguridad las credenciales nunca se muestran completas. Para
-            rotar o corregir una, escríbenos.
+            rotar o corregir una: <ContactoSoporte compacto />.
           </p>
         </section>
 

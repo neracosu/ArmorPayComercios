@@ -4,6 +4,7 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
+import ContactoSoporte from "@/components/ContactoSoporte";
 import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
 import PanelActivacion, { type RecaudoVista } from "./PanelActivacion";
 
@@ -95,8 +96,8 @@ export default async function ActivacionPage() {
 
         {comercio?.status === "RECHAZADA" ? (
           <p className="mt-6 rounded-card border border-error/40 bg-error-suave/50 p-5 text-sm text-error">
-            Tu solicitud fue rechazada. Si crees que es un error, escríbenos
-            desde la página de propuesta.
+            Tu solicitud fue rechazada. Si crees que es un error,{" "}
+            <ContactoSoporte compacto />.
           </p>
         ) : (
           <ol className="mt-5 flex flex-wrap items-center gap-1.5 text-xs">
