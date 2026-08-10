@@ -30,5 +30,15 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 20,
     },
+    {
+      name: "armorpay-worker",
+      cwd: "/home/mardenli/armorpay-cloud",
+      script: "./node_modules/.bin/tsx",
+      args: "--env-file=.env worker/index.ts",
+      env: { NODE_ENV: "production", TZ: "America/Caracas" },
+      max_memory_restart: "300M",
+      restart_delay: 5000,
+      max_restarts: 20,
+    },
   ],
 };
