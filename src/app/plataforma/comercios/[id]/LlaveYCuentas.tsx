@@ -71,7 +71,7 @@ export function FormularioLlave({
             required
             autoComplete="off"
             spellCheck={false}
-            placeholder="DDFB1106AE8B79A81854AA1854896755"
+            placeholder="pega acá la llave emitida por el banco"
             className={`${campo} flex-1 font-mono`}
           />
           <Boton icono={KeyRound} texto="Guardar" />
@@ -211,7 +211,7 @@ export function FormularioCuenta({ organizationId }: { organizationId: string })
             name="accountNumber"
             required
             inputMode="numeric"
-            placeholder="01750190910077122886"
+            placeholder="01750000000000000000"
             className={`${campo} font-mono`}
           />
         </div>

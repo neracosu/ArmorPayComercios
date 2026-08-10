@@ -10,7 +10,7 @@ import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { normalizarRif, validarRif } from "@/lib/rif";
 import { enviarCorreo, URL_APP } from "@/lib/correo";
-import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
+import { RECAUDO_MAX_BYTES, RECAUDOS_REQUERIDOS, tipoDeDocumento } from "@/lib/recaudos";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
@@ -514,6 +514,58 @@ export async function guardarAfiliacionC2p(
       ? "C2P habilitado. El comercio ya puede cobrar con Botón de Pago."
       : "Afiliación guardada. C2P queda apagado hasta habilitarlo.",
   };
+}
+
+// ── Recaudos en nombre del comercio (modo GESTIONAMOS) ──────────────────────
+
+/**
+ * Sube un documento del expediente EN NOMBRE del comercio. En el modo
+ * GESTIONAMOS el cliente nos hace llegar sus PDF por fuera (correo, WhatsApp)
+ * y no había forma de meterlos al expediente: la subida del comercio vive en
+ * su panel de activación, que redirige a cierres al quedar ACTIVA. Nace
+ * PENDIENTE igual que la subida del comercio — el dictamen lo da el botón de
+ * revisión de siempre, y el rastro queda honesto (subir ≠ aprobar).
+ */
+export async function subirRecaudoComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  const tipo = String(datos.get("tipo") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+  if (!RECAUDOS_REQUERIDOS.some((r) => r.tipo === tipo)) {
+    return { ok: false, error: "Tipo de documento desconocido." };
+  }
+
+  const archivo = datos.get("archivo");
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { ok: false, error: "Elige el archivo primero." };
+  }
+  if (archivo.size > RECAUDO_MAX_BYTES) {
+    return { ok: false, error: "El archivo pesa más de 2 MB. Comprímelo y vuelve a intentar." };
+  }
+  const buf = Buffer.from(await archivo.arrayBuffer());
+  const mime = tipoDeDocumento(buf);
+  if (!mime) return { ok: false, error: "Solo aceptamos PDF, PNG, JPG o WebP." };
+
+  await db.recaudo.upsert({
+    // Volver a subir REEMPLAZA y vuelve a PENDIENTE, igual que del lado del
+    // comercio: un documento corregido se dictamina de nuevo.
+    where: { organizationId_tipo: { organizationId, tipo } },
+    create: { organizationId, tipo, nombre: archivo.name.slice(0, 120), archivo: buf, mime },
+    update: {
+      nombre: archivo.name.slice(0, 120),
+      archivo: buf,
+      mime,
+      status: "PENDIENTE",
+      nota: null,
+    },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return { ok: true, mensaje: "Documento cargado al expediente. Dictamínalo en la lista." };
 }
 
 // ── Eliminación total de un comercio (zona de peligro) ──────────────────────

@@ -68,7 +68,7 @@ export function FormularioC2p({
             inputMode="numeric"
             pattern="\d{4,12}"
             defaultValue={codAfiliado ?? ""}
-            placeholder="009635"
+            placeholder="012345"
             className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
           />
         </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, Check, ExternalLink, Loader2, ThumbsDown, ThumbsUp } from "lucide-react";
-import { revisarRecaudo, aprobarCuenta, type Resultado } from "../../actions";
+import { revisarRecaudo, aprobarCuenta, subirRecaudoComercio, type Resultado } from "../../actions";
 
 const CHIP: Record<string, { texto: string; clase: string }> = {
   PENDIENTE: { texto: "en revisión", clase: "bg-alerta-suave text-alerta" },
@@ -40,6 +40,57 @@ function BotonChico({ children }: { children: React.ReactNode }) {
       {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
       {children}
     </button>
+  );
+}
+
+/**
+ * Subida de un recaudo EN NOMBRE del comercio (modo GESTIONAMOS: el cliente
+ * manda sus PDF por fuera). Nace «en revisión» — el dictamen se da en la
+ * lista de arriba, igual que si lo hubiera subido el comercio.
+ */
+export function SubirRecaudoComercio({
+  organizationId,
+  tipos,
+}: {
+  organizationId: string;
+  tipos: Array<{ tipo: string; titulo: string }>;
+}) {
+  const [resultado, accion] = useFormState<Resultado | null, FormData>(subirRecaudoComercio, null);
+
+  return (
+    <form
+      action={accion}
+      className="mt-3 rounded-card border border-dashed border-tinta-borde bg-white p-4"
+    >
+      <p className="text-sm font-medium text-tinta">Subir en nombre del comercio</p>
+      <p className="mt-0.5 text-xs text-tinta-tenue">
+        Para cuando el cliente nos hace llegar sus documentos por fuera (afiliación gestionada).
+        Volver a subir un tipo REEMPLAZA el anterior y lo devuelve a revisión.
+      </p>
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <select
+          name="tipo"
+          className="rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta focus:border-marca-600 focus:outline-none"
+        >
+          {tipos.map((t) => (
+            <option key={t.tipo} value={t.tipo}>
+              {t.titulo}
+            </option>
+          ))}
+        </select>
+        <input
+          name="archivo"
+          type="file"
+          required
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          className="block text-sm text-tinta-suave file:mr-3 file:rounded-control file:border-0 file:bg-tinta-fondo file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-tinta-suave"
+        />
+        <BotonChico>Subir</BotonChico>
+      </div>
+      <p className="mt-2 text-xs text-tinta-tenue">PDF, PNG, JPG o WebP · hasta 2 MB.</p>
+      <Aviso r={resultado} />
+    </form>
   );
 }
 

@@ -10,7 +10,8 @@ import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./L
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 import CicloActivacion from "./CicloActivacion";
 import { ZonaPeligro } from "./ZonaPeligro";
-import { FilaRecaudoRevision, FilaCuentaPorAprobar } from "./RevisionExpediente";
+import { FilaRecaudoRevision, FilaCuentaPorAprobar, SubirRecaudoComercio } from "./RevisionExpediente";
+import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
 
 export const dynamic = "force-dynamic";
 
@@ -335,6 +336,10 @@ export default async function ComercioPage({ params }: { params: { id: string } 
             ))}
           </ul>
         )}
+        <SubirRecaudoComercio
+          organizationId={comercio.id}
+          tipos={RECAUDOS_REQUERIDOS.map((r) => ({ tipo: r.tipo, titulo: r.titulo }))}
+        />
       </section>
 
       {/* Cuentas */}
