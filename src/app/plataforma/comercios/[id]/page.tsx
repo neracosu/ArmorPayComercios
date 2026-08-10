@@ -9,6 +9,7 @@ import CrearAdmin from "./CrearAdmin";
 import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 import CicloActivacion from "./CicloActivacion";
+import { ZonaPeligro } from "./ZonaPeligro";
 import { FilaRecaudoRevision, FilaCuentaPorAprobar } from "./RevisionExpediente";
 
 export const dynamic = "force-dynamic";
@@ -415,6 +416,15 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           ))}
         </ul>
       </section>
+
+      {/* Borrado total: solo el PLATFORM_ADMIN — la revisora ni lo ve */}
+      {session?.user.role === "PLATFORM_ADMIN" && (
+        <ZonaPeligro
+          organizationId={comercio.id}
+          rif={comercio.rif}
+          razonSocial={comercio.razonSocial}
+        />
+      )}
     </main>
   );
 }

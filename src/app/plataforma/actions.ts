@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { PrismaClient, type LeadEstado } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
-import { validarRif } from "@/lib/rif";
+import { normalizarRif, validarRif } from "@/lib/rif";
 import { enviarCorreo, URL_APP } from "@/lib/correo";
 import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
 import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
@@ -513,6 +514,61 @@ export async function guardarAfiliacionC2p(
       ? "C2P habilitado. El comercio ya puede cobrar con Botón de Pago."
       : "Afiliación guardada. C2P queda apagado hasta habilitarlo.",
   };
+}
+
+// ── Eliminación total de un comercio (zona de peligro) ──────────────────────
+
+/**
+ * Borra un comercio y TODO su rastro: usuarios, cuentas, pagos recibidos,
+ * cobros, turnos, intents, API keys, webhooks, bitácora y expediente. Existe
+ * para los registros de prueba y las altas abandonadas: el RIF y el slug son
+ * únicos, así que mientras el registro viva la misma empresa no puede volver
+ * a darse de alta. Irreversible a propósito — exige reescribir el RIF y es
+ * exclusivo del PLATFORM_ADMIN (la revisora ni lo ve en la ficha).
+ */
+export async function eliminarComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  const confirmacion = normalizarRif(String(datos.get("rifConfirmacion") ?? ""));
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { rif: true },
+  });
+  if (!org) return { ok: false, error: "Comercio no encontrado." };
+  if (confirmacion !== org.rif) {
+    return { ok: false, error: "El RIF no coincide. Escríbelo tal cual aparece en la ficha." };
+  }
+
+  // Purga en orden inverso a las FKs Restrict, en UNA transacción: o
+  // desaparece todo, o no desaparece nada. Los Leads no se borran — son la
+  // solicitud original, anterior al comercio: solo se les suelta el vínculo.
+  const where = { organizationId };
+  await db.$transaction([
+    db.webhookDelivery.deleteMany({ where }),
+    db.paymentClaim.deleteMany({ where }),
+    db.checkoutIntent.deleteMany({ where }),
+    db.apiEvent.deleteMany({ where }),
+    db.apiKey.deleteMany({ where }),
+    db.shift.deleteMany({ where }),
+    db.bankTransaction.deleteMany({ where }),
+    db.recaudo.deleteMany({ where }),
+    db.authKeyEvent.deleteMany({ where }),
+    db.webhookEndpoint.deleteMany({ where }),
+    db.bankAccount.deleteMany({ where }),
+    db.user.deleteMany({ where }),
+    db.branch.deleteMany({ where }),
+    db.lead.updateMany({ where, data: { organizationId: null } }),
+    db.organization.delete({ where: { id: organizationId } }),
+  ]);
+
+  revalidatePath("/plataforma/comercios");
+  redirect("/plataforma/comercios");
 }
 
 // ── Logo del comercio (subida en su nombre durante el alta) ─────────────────
