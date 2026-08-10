@@ -44,6 +44,7 @@ export default async function CierresPage() {
           attendant: true,
           totalCount: true,
           totalAmount: true,
+          closingNote: true,
           user: { select: { name: true } },
           branch: { select: { name: true } },
           _count: { select: { claims: true } },
@@ -83,10 +84,20 @@ export default async function CierresPage() {
         esAdminComercio
       />
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Cierres</h1>
-        <p className="mt-1 text-sm text-tinta-tenue">
-          Lo que cobró cada caja, turno por turno.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Cierres</h1>
+            <p className="mt-1 text-sm text-tinta-tenue">
+              Lo que cobró cada caja, turno por turno.
+            </p>
+          </div>
+          <a
+            href="/comercio/cierres/export"
+            className="rounded-control border border-tinta-borde bg-white px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+          >
+            Descargar CSV (30 días)
+          </a>
+        </div>
 
         {/* El día, de un vistazo: a esto viene el dueño. */}
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -208,7 +219,21 @@ export default async function CierresPage() {
                         {new Date(t.openedAt).toLocaleString("es-VE")}
                         {t.closedAt ? ` → ${new Date(t.closedAt).toLocaleTimeString("es-VE")}` : ""}
                         {t.attendant ? ` · ${t.attendant}` : ""}
+                        {!abierto && (
+                          <>
+                            {" · "}
+                            <Link
+                              href={`/turno/cierre/${t.id}`}
+                              className="font-medium text-marca-700 hover:underline"
+                            >
+                              comprobante
+                            </Link>
+                          </>
+                        )}
                       </p>
+                      {t.closingNote && (
+                        <p className="mt-0.5 text-xs italic text-tinta-tenue">“{t.closingNote}”</p>
+                      )}
                     </div>
                     <p className="shrink-0 text-right text-sm">
                       <strong className="text-tinta">

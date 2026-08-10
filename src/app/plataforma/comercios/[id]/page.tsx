@@ -6,6 +6,8 @@ import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import { describeC2p } from "../../../../../gateway/bt-c2p-codes";
 import CrearAdmin from "./CrearAdmin";
+import PlanComercio from "./PlanComercio";
+import { PLANES, INFINITO } from "@/lib/planes";
 import { FormularioContacto, FormularioNotas, BotonResetClave } from "./Contacto";
 import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
@@ -95,6 +97,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       <nav className="mt-4 flex flex-wrap gap-1.5 text-sm" aria-label="Secciones de la ficha">
         {[
           ["#contacto", "Contacto"],
+          ["#plan", "Plan"],
           ["#activacion", "Activación"],
           ["#recaudos", "Recaudos"],
           ["#cuentas", "Cuentas"],
@@ -133,6 +136,28 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         />
         <h3 className="mt-5 text-sm font-semibold text-tinta">Notas internas</h3>
         <FormularioNotas organizationId={comercio.id} notasInternas={comercio.notasInternas} />
+      </section>
+
+      {/* El plan: la palanca comercial. La revisora lo ve; solo el ADMIN lo cambia. */}
+      <section id="plan" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="font-display font-bold tracking-tight text-tinta">Plan</h2>
+        <p className="mt-1 text-sm text-tinta-tenue">
+          Actual: <strong className="font-medium text-tinta">{comercio.plan}</strong>
+        </p>
+        {session?.user.role === "PLATFORM_ADMIN" && (
+          <PlanComercio
+            organizationId={comercio.id}
+            planActual={comercio.plan}
+            planes={PLANES.map((p) => ({
+              clave: p.clave,
+              nombre: p.nombre,
+              precioUSD: p.precioUsd,
+              cobros: p.cobrosIncluidos,
+              cajas: p.cajas === INFINITO ? "ilimitadas" : String(p.cajas),
+              sucursales: p.sucursales === INFINITO ? "ilimitadas" : String(p.sucursales),
+            }))}
+          />
+        )}
       </section>
 
       {/* El ciclo de activación: dónde va el alta y qué falta */}

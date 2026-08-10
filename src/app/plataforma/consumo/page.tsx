@@ -76,7 +76,15 @@ export default async function ConsumoPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
-      <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Consumo</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">Consumo</h1>
+        <a
+          href="/plataforma/consumo/export"
+          className="rounded-control border border-tinta-borde bg-white px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+        >
+          Descargar CSV (30 días)
+        </a>
+      </div>
       <p className="mt-1 text-sm text-tinta-tenue">
         Cobros confirmados por comercio. Es la unidad con la que tiene sentido
         cobrar: una venta real, no una búsqueda que se repitió porque el banco

@@ -7,6 +7,22 @@ import { prisma } from "@/lib/prisma";
 import { cifrar, pistaDeLlave } from "@/lib/crypto";
 import { RECAUDO_MAX_BYTES, RECAUDOS_REQUERIDOS, tipoDeDocumento } from "@/lib/recaudos";
 import { SOPORTE_EMAIL } from "@/lib/soporte";
+import { enviarCorreo, CORREO_INTERNO, URL_APP } from "@/lib/correo";
+
+/**
+ * Aviso interno de que hay trabajo de revisión. SIEMPRE después del commit y
+ * con `void`: un fallo de correo jamás rompe el alta del comercio. Antes de
+ * esto la cola de revisión solo se descubría entrando al panel.
+ */
+function avisarPlataforma(asunto: string, titulo: string, parrafos: string[], orgId: string): void {
+  void enviarCorreo({
+    para: CORREO_INTERNO,
+    asunto,
+    titulo,
+    parrafos,
+    boton: { texto: "Abrir la ficha", url: `${URL_APP}/plataforma/comercios/${orgId}` },
+  });
+}
 
 /**
  * Autogestión de la activación: el comercio arma su propio expediente.
@@ -68,6 +84,29 @@ export async function subirRecaudo(
       },
     })
   );
+
+  // ¿Con este documento el expediente quedó completo? Avisar a la plataforma:
+  // la revisión no debería descubrirse entrando al panel de casualidad.
+  const [subidos, org] = await withSessionTenant(session, () =>
+    Promise.all([
+      prisma.recaudo.count(),
+      prisma.organization.findUnique({
+        where: { id: session.user.organizationId! },
+        select: { razonSocial: true, rif: true },
+      }),
+    ])
+  );
+  if (subidos >= RECAUDOS_REQUERIDOS.length && org) {
+    avisarPlataforma(
+      `Expediente completo: ${org.razonSocial}`,
+      "Hay un expediente listo para revisar",
+      [
+        `${org.razonSocial} (RIF ${org.rif}) subió sus ${RECAUDOS_REQUERIDOS.length} recaudos.`,
+        "Revísalos y dictamina cada documento desde la ficha.",
+      ],
+      session.user.organizationId!
+    );
+  }
 
   revalidatePath("/comercio/activacion");
   return { ok: true, mensaje: "Documento subido. Lo revisamos y te avisamos acá mismo." };
@@ -154,6 +193,22 @@ export async function cargarLlave(
     });
   });
 
+  const orgLlave = await withSessionTenant(session, () =>
+    prisma.organization.findUnique({
+      where: { id: session.user.organizationId! },
+      select: { razonSocial: true },
+    })
+  );
+  avisarPlataforma(
+    `Llave BDT cargada: ${orgLlave?.razonSocial ?? "un comercio"}`,
+    "Hay una Llave de Trabajo lista para probar",
+    [
+      `${orgLlave?.razonSocial ?? "Un comercio"} pegó su Llave de Trabajo del BDT.`,
+      "Verifícala contra el banco desde la ficha para avanzar su certificación.",
+    ],
+    session.user.organizationId!
+  );
+
   revalidatePath("/comercio/activacion");
   return {
     ok: true,
@@ -205,6 +260,22 @@ export async function cargarCredencialesBt(
       },
     });
   });
+
+  const orgBt = await withSessionTenant(session, () =>
+    prisma.organization.findUnique({
+      where: { id: session.user.organizationId! },
+      select: { razonSocial: true },
+    })
+  );
+  avisarPlataforma(
+    `Credenciales BT cargadas: ${orgBt?.razonSocial ?? "un comercio"}`,
+    "Hay credenciales del Tesoro listas para probar",
+    [
+      `${orgBt?.razonSocial ?? "Un comercio"} pegó sus credenciales del Identificador de Pagos.`,
+      "Pruébalas contra el banco desde la ficha para confirmar la vinculación.",
+    ],
+    session.user.organizationId!
+  );
 
   revalidatePath("/comercio/activacion");
   return {

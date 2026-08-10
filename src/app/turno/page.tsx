@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
@@ -98,7 +99,13 @@ export default async function TurnoPage() {
                 <li key={t.id} className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-tinta-tenue">
                     {new Date(t.openedAt).toLocaleDateString("es-VE")} ·{" "}
-                    {t.closedAt ? new Date(t.closedAt).toLocaleTimeString("es-VE") : ""}
+                    {t.closedAt ? new Date(t.closedAt).toLocaleTimeString("es-VE") : ""}{" "}
+                    <Link
+                      href={`/turno/cierre/${t.id}`}
+                      className="font-medium text-marca-700 hover:underline"
+                    >
+                      comprobante
+                    </Link>
                   </span>
                   <span className="text-tinta">
                     <strong>Bs {bolivares(Number(t.totalAmount ?? 0))}</strong>{" "}

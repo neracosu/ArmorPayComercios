@@ -1072,6 +1072,34 @@ export async function guardarNotasComercio(
 }
 
 /**
+ * Cambia el plan de un comercio. Antes no existía UI para esto: todo comercio
+ * nacía y MORÍA en PRUEBA (2 cajas, 1 sucursal) salvo UPDATE a mano — un
+ * límite que muerde justo cuando el cliente quiere crecer. Solo ADMIN.
+ */
+export async function cambiarPlanComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  const plan = String(datos.get("plan") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+  if (!["PRUEBA", "COMERCIO", "CADENA"].includes(plan)) {
+    return { ok: false, error: "Ese plan no existe." };
+  }
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { plan: plan as "PRUEBA" | "COMERCIO" | "CADENA" },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  revalidatePath("/plataforma/comercios");
+  return { ok: true, mensaje: `Plan cambiado a ${plan}. Sus límites aplican ya.` };
+}
+
+/**
  * Resetea la contraseña de CUALQUIER usuario (admin de comercio, caja o
  * interno) y cierra sus sesiones. Es la salida cuando alguien pierde la clave:
  * antes de esto, un ORG_ADMIN sin clave era un UPDATE a mano en la base.

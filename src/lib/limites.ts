@@ -50,7 +50,8 @@ export async function puedeCrearCaja(organizationId: string): Promise<Veredicto>
   const plan = await planDe(organizationId);
   if (plan.cajas === INFINITO) return { permitido: true };
 
-  const usadas = await prisma.user.count({ where: { role: "OPERATOR" } });
+  // Solo las ACTIVAS consumen cupo: una caja desactivada ya no trabaja.
+  const usadas = await prisma.user.count({ where: { role: "OPERATOR", isActive: true } });
   return usadas < plan.cajas
     ? { permitido: true }
     : {

@@ -31,6 +31,7 @@ export default async function ComerciosPage() {
       razonSocial: true,
       rif: true,
       status: true,
+      plan: true,
       authKeyStatus: true,
       _count: { select: { users: true, accounts: true } },
     },
@@ -63,7 +64,8 @@ export default async function ComerciosPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-tinta">{c.razonSocial}</p>
                   <p className="mt-0.5 text-sm text-tinta-tenue">
-                    {c.rif} · {c._count.users} usuario(s) · {c._count.accounts} cuenta(s) ·{" "}
+                    {c.rif} · plan {c.plan} · {c._count.users} usuario(s) · {c._count.accounts}{" "}
+                    cuenta(s) ·{" "}
                     <span className={LLAVE[c.authKeyStatus]?.clase}>
                       {LLAVE[c.authKeyStatus]?.texto ?? c.authKeyStatus}
                     </span>

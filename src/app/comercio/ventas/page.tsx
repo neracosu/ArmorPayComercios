@@ -111,13 +111,23 @@ export default async function VentasPage({
         esAdminComercio
       />
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">
-          Ventas en línea
-        </h1>
-        <p className="mt-1 text-sm text-tinta-tenue">
-          Cada cobro que tu tienda creó por la API o por la página de pago, con
-          su estado real.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-tinta">
+              Ventas en línea
+            </h1>
+            <p className="mt-1 text-sm text-tinta-tenue">
+              Cada cobro que tu tienda creó por la API o por la página de pago, con
+              su estado real.
+            </p>
+          </div>
+          <a
+            href={`/comercio/ventas/export${filtro ? `?estado=${filtro}` : ""}`}
+            className="rounded-control border border-tinta-borde bg-white px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+          >
+            Descargar CSV (30 días)
+          </a>
+        </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-card border border-tinta-borde bg-white p-5">
