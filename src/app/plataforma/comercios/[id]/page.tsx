@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import { describeC2p } from "../../../../../gateway/bt-c2p-codes";
 import CrearAdmin from "./CrearAdmin";
+import { FormularioContacto, FormularioNotas, BotonResetClave } from "./Contacto";
 import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
 import CicloActivacion from "./CicloActivacion";
@@ -51,9 +52,13 @@ export default async function ComercioPage({ params }: { params: { id: string } 
   });
   if (!comercio) notFound();
 
-  const [pagos, cobros] = await Promise.all([
+  const [pagos, cobros, leadOrigen] = await Promise.all([
     db.bankTransaction.count({ where: { organizationId: comercio.id } }),
     db.paymentClaim.count({ where: { organizationId: comercio.id } }),
+    db.lead.findFirst({
+      where: { organizationId: comercio.id },
+      select: { contacto: true, email: true, telefono: true, createdAt: true },
+    }),
   ]);
 
   const llave = LLAVE[comercio.authKeyStatus] ?? {
@@ -89,6 +94,7 @@ export default async function ComercioPage({ params }: { params: { id: string } 
       {/* La ficha creció: anclas para no bucear. */}
       <nav className="mt-4 flex flex-wrap gap-1.5 text-sm" aria-label="Secciones de la ficha">
         {[
+          ["#contacto", "Contacto"],
           ["#activacion", "Activación"],
           ["#recaudos", "Recaudos"],
           ["#cuentas", "Cuentas"],
@@ -108,6 +114,26 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           </a>
         ))}
       </nav>
+
+      {/* A quién llamar: lo primero de la ficha, porque es lo primero que se busca */}
+      <section id="contacto" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
+        <h2 className="font-display font-bold tracking-tight text-tinta">Contacto</h2>
+        {leadOrigen && (
+          <p className="mt-1 text-xs text-tinta-tenue">
+            Nació de una solicitud del{" "}
+            {new Date(leadOrigen.createdAt).toLocaleDateString("es-VE")} — dio como contacto a{" "}
+            {leadOrigen.contacto} ({[leadOrigen.email, leadOrigen.telefono].filter(Boolean).join(" · ")}).
+          </p>
+        )}
+        <FormularioContacto
+          organizationId={comercio.id}
+          contactoNombre={comercio.contactoNombre}
+          contactoTelefono={comercio.contactoTelefono}
+          contactoEmail={comercio.contactoEmail}
+        />
+        <h3 className="mt-5 text-sm font-semibold text-tinta">Notas internas</h3>
+        <FormularioNotas organizationId={comercio.id} notasInternas={comercio.notasInternas} />
+      </section>
 
       {/* El ciclo de activación: dónde va el alta y qué falta */}
       <section id="activacion" className="mt-6 scroll-mt-4 rounded-card border border-tinta-borde bg-white p-5">
@@ -387,10 +413,15 @@ export default async function ComercioPage({ params }: { params: { id: string } 
         {comercio.users.length > 0 && (
           <ul className="mb-4 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
             {comercio.users.map((u) => (
-              <li key={u.id} className="flex items-center justify-between px-5 py-3 text-sm">
-                <span>
+              <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                <span className="min-w-0">
                   <span className="font-medium text-tinta">{u.username}</span>
                   <span className="text-tinta-tenue"> · {u.name}</span>
+                  {u.email && (
+                    <a href={`mailto:${u.email}`} className="ml-2 text-xs text-marca-700 hover:underline">
+                      {u.email}
+                    </a>
+                  )}
                 </span>
                 <span className="flex items-center gap-2">
                   {!u.isActive && (
@@ -399,6 +430,9 @@ export default async function ComercioPage({ params }: { params: { id: string } 
                     </span>
                   )}
                   <span className="text-tinta-tenue">{ROL[u.role] ?? u.role}</span>
+                  {session?.user.role === "PLATFORM_ADMIN" && (
+                    <BotonResetClave userId={u.id} username={u.username} />
+                  )}
                 </span>
               </li>
             ))}

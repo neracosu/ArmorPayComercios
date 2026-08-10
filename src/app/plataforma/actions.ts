@@ -309,6 +309,13 @@ const usuarioComercioSchema = z.object({
   organizationId: z.string().min(1),
   usuario: usernameSchema,
   nombre: z.string().trim().min(2, "Falta el nombre").max(120),
+  // Con email, el admin recibe los correos del ciclo de activación.
+  email: z
+    .string()
+    .trim()
+    .max(160)
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Revisa el correo")
+    .optional(),
 });
 
 /**
@@ -337,6 +344,7 @@ export async function crearAdminComercio(
   });
   const password = generarPassword();
 
+  const email = parsed.data.email || null;
   await db.user.create({
     data: {
       username: usuario,
@@ -345,8 +353,17 @@ export async function crearAdminComercio(
       role: "ORG_ADMIN",
       organizationId: parsed.data.organizationId,
       branchId: branch?.id ?? null,
+      email,
     },
   });
+
+  // Si la ficha no tenía a quién contactar, este admin lo es.
+  if (email) {
+    await db.organization.updateMany({
+      where: { id: parsed.data.organizationId, contactoEmail: null },
+      data: { contactoNombre: parsed.data.nombre, contactoEmail: email },
+    });
+  }
 
   revalidatePath(`/plataforma/comercios/${parsed.data.organizationId}`);
   return {
@@ -421,11 +438,22 @@ export async function convertirLead(
     return { ok: false, error: `El usuario "${usuario}" ya existe.` };
   }
 
+  // El lead trae el contacto que el propio comercio nos dio: se hereda al
+  // comercio para que la ficha nazca con a quién llamar.
+  const lead = await db.lead.findUnique({ where: { id: d.leadId } });
+
   const password = generarPassword();
 
   const org = await db.$transaction(async (tx) => {
     const org = await tx.organization.create({
-      data: { rif, razonSocial: d.razonSocial, slug },
+      data: {
+        rif,
+        razonSocial: d.razonSocial,
+        slug,
+        contactoNombre: lead?.contacto ?? null,
+        contactoTelefono: lead?.telefono ?? null,
+        contactoEmail: lead?.email ?? null,
+      },
     });
     const branch = await tx.branch.create({
       data: { organizationId: org.id, name: "Principal", code: "PRIN" },
@@ -438,6 +466,9 @@ export async function convertirLead(
         role: "ORG_ADMIN",
         organizationId: org.id,
         branchId: branch.id,
+        // Con el email del lead, este admin sí recibe los correos del ciclo
+        // de activación (sin email, el comercio quedaba mudo).
+        email: lead?.email ?? null,
       },
     });
     await tx.lead.update({
@@ -980,4 +1011,103 @@ export async function alternarUsuarioInterno(
 
   revalidatePath("/plataforma/usuarios");
   return { ok: true, mensaje: objetivo.isActive ? "Usuario desactivado y sesiones cerradas." : "Usuario reactivado." };
+}
+
+// ── Contacto y notas del comercio (el CRM mínimo) ───────────────────────────
+
+const contactoSchema = z.object({
+  organizationId: z.string().min(1),
+  contactoNombre: z.string().trim().max(120).optional(),
+  contactoTelefono: z.string().trim().max(30).optional(),
+  contactoEmail: z
+    .string()
+    .trim()
+    .max(160)
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Revisa el correo")
+    .optional(),
+});
+
+/** Guarda a quién llamar cuando algo pasa con el comercio. Revisora incluida. */
+export async function guardarContactoComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirRevision();
+
+  const parsed = contactoSchema.safeParse(Object.fromEntries(datos));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  await db.organization.update({
+    where: { id: d.organizationId },
+    data: {
+      contactoNombre: d.contactoNombre || null,
+      contactoTelefono: d.contactoTelefono || null,
+      contactoEmail: d.contactoEmail || null,
+    },
+  });
+
+  revalidatePath(`/plataforma/comercios/${d.organizationId}`);
+  return { ok: true, mensaje: "Contacto guardado." };
+}
+
+/** Notas internas de la relación con el comercio. El comercio nunca las ve. */
+export async function guardarNotasComercio(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirRevision();
+
+  const organizationId = String(datos.get("organizationId") ?? "");
+  if (!organizationId) return { ok: false, error: "Falta el comercio." };
+  const notas = String(datos.get("notasInternas") ?? "").trim().slice(0, 5000);
+
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { notasInternas: notas || null },
+  });
+
+  revalidatePath(`/plataforma/comercios/${organizationId}`);
+  return { ok: true, mensaje: "Notas guardadas." };
+}
+
+/**
+ * Resetea la contraseña de CUALQUIER usuario (admin de comercio, caja o
+ * interno) y cierra sus sesiones. Es la salida cuando alguien pierde la clave:
+ * antes de esto, un ORG_ADMIN sin clave era un UPDATE a mano en la base.
+ * Exclusivo del PLATFORM_ADMIN; la nueva se muestra UNA vez.
+ */
+export async function resetearClaveDeUsuario(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  const session = await exigirPlataforma();
+
+  const userId = String(datos.get("userId") ?? "");
+  if (!userId) return { ok: false, error: "Falta el usuario." };
+
+  const objetivo = await db.user.findUnique({ where: { id: userId } });
+  if (!objetivo) return { ok: false, error: "Ese usuario no existe." };
+  if (objetivo.id === session.user.id) {
+    return { ok: false, error: "Tu propia contraseña cámbiala desde Mi cuenta." };
+  }
+
+  // Cajas: clave corta dictable (la sostiene el freno del login). Resto: 12.
+  const password = generarPassword(objetivo.role === "OPERATOR" ? undefined : 12);
+
+  await db.user.update({
+    where: { id: objetivo.id },
+    data: {
+      passwordHash: await bcrypt.hash(password, 12),
+      tokenVersion: { increment: 1 },
+    },
+  });
+
+  if (objetivo.organizationId) revalidatePath(`/plataforma/comercios/${objetivo.organizationId}`);
+  revalidatePath("/plataforma/usuarios");
+  return {
+    ok: true,
+    mensaje: `Contraseña de ${objetivo.username} reseteada. Tiene que entrar de nuevo.`,
+    credenciales: { usuario: objetivo.username, password },
+  };
 }

@@ -115,7 +115,13 @@ export default function Cabecera({
               </Link>
             </>
           )}
-          <span className="hidden px-2 text-sm text-tinta-tenue sm:inline">{usuario}</span>
+          <Link
+            href="/cuenta"
+            title="Mi cuenta"
+            className="hidden rounded-control px-2 py-1.5 text-sm text-tinta-tenue hover:bg-tinta-fondo hover:text-tinta sm:inline"
+          >
+            {usuario}
+          </Link>
           <CerrarSesion />
         </nav>
       </div>

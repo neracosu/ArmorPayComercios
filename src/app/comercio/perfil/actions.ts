@@ -57,6 +57,40 @@ export async function subirLogo(
   return { ok: true, mensaje: "Logo guardado. Ya se ve en tus cajas y en tu página de pago." };
 }
 
+/**
+ * El dueño mantiene su propio dato de contacto — es SU ficha. Mismo patrón
+ * del logo: el `where` es SIEMPRE el id de la sesión, nunca uno recibido.
+ */
+export async function guardarMiContacto(
+  _previo: ResultadoPerfil | null,
+  datos: FormData
+): Promise<ResultadoPerfil> {
+  const session = await exigirAdminComercio();
+
+  const nombre = String(datos.get("contactoNombre") ?? "").trim().slice(0, 120);
+  const telefono = String(datos.get("contactoTelefono") ?? "").trim().slice(0, 30);
+  const email = String(datos.get("contactoEmail") ?? "").trim().slice(0, 160);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "Revisa el correo de contacto." };
+  }
+
+  await withSessionTenant(session, () =>
+    runAsPlatform("perfil: contacto del comercio de la sesión", () =>
+      prisma.organization.update({
+        where: { id: session.user.organizationId! },
+        data: {
+          contactoNombre: nombre || null,
+          contactoTelefono: telefono || null,
+          contactoEmail: email || null,
+        },
+      })
+    )
+  );
+
+  revalidatePath("/comercio/perfil");
+  return { ok: true, mensaje: "Contacto guardado. Es a quien vamos a llamar si algo pasa con tu cuenta." };
+}
+
 export async function quitarLogo(
   _previo: ResultadoPerfil | null,
   _datos: FormData

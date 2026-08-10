@@ -44,9 +44,13 @@ export default async function PlataformaLayout({ children }: { children: React.R
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="hidden px-2 text-sm text-white/60 sm:inline">
+            <Link
+              href="/cuenta"
+              title="Mi cuenta"
+              className="hidden rounded-control px-2 py-1 text-sm text-white/60 hover:bg-white/10 hover:text-white sm:inline"
+            >
               {session.user.name}
-            </span>
+            </Link>
             <span className="text-white/60">
               <CerrarSesion />
             </span>

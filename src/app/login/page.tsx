@@ -32,7 +32,9 @@ export default async function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-tinta-tenue">
-          ¿Problemas para entrar? Pídele a tu administrador que revise tu usuario.
+          ¿Olvidaste tu contraseña? El administrador de tu comercio puede
+          resetearla desde su panel — y la del administrador la resetea la
+          plataforma.
         </p>
         <p className="mt-2 text-center text-sm text-tinta-tenue">
           ¿Tu comercio aún no tiene cuenta?{" "}

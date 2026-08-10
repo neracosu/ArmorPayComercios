@@ -100,7 +100,14 @@ export async function registrarComercio(
   try {
     await registroDb.$transaction(async (tx) => {
       const org = await tx.organization.create({
-        data: { slug, razonSocial: parsed.data.razonSocial, rif },
+        data: {
+          slug,
+          razonSocial: parsed.data.razonSocial,
+          rif,
+          // El que registra ES el contacto: la ficha nace con a quién llamar.
+          contactoNombre: parsed.data.nombre,
+          contactoEmail: parsed.data.email,
+        },
       });
       // Sin sucursal no se puede abrir turno: nace con la Principal.
       const branch = await tx.branch.create({

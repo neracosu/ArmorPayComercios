@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { CrearInterno, BotonAlternarInterno } from "./GestionInternos";
+import { BotonResetClave } from "../comercios/[id]/Contacto";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function UsuariosPage() {
       id: true,
       username: true,
       name: true,
+      email: true,
       role: true,
       isActive: true,
       organization: { select: { id: true, razonSocial: true } },
@@ -57,6 +59,14 @@ export default async function UsuariosPage() {
               </p>
               <p className="text-sm text-tinta-tenue">
                 {u.name}
+                {u.email && (
+                  <>
+                    {" · "}
+                    <a href={`mailto:${u.email}`} className="text-marca-700 hover:underline">
+                      {u.email}
+                    </a>
+                  </>
+                )}
                 {u.organization && (
                   <>
                     {" · "}
@@ -78,6 +88,7 @@ export default async function UsuariosPage() {
             {!u.organization && u.id !== session?.user.id && (
               <BotonAlternarInterno userId={u.id} activo={u.isActive} />
             )}
+            {u.id !== session?.user.id && <BotonResetClave userId={u.id} username={u.username} />}
           </li>
         ))}
       </ul>

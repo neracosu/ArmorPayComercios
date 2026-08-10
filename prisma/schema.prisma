@@ -58,6 +58,17 @@ model Organization {
   status      OrgStatus @default(REGISTRADA)
   plan        Plan      @default(PRUEBA)
 
+  // A quién llamar cuando algo pasa con este comercio. Se precarga del lead
+  // (conversión manual) o del registro self-service, y lo edita tanto la
+  // plataforma (ficha) como el propio dueño (perfil). Sin esto, contactar a
+  // un cliente exigía ir a la solicitud original o a la base a mano.
+  contactoNombre   String?
+  contactoTelefono String?
+  contactoEmail    String?
+  // Notas de la relación (solo plataforma, la revisora incluida): acuerdos,
+  // números de trámite con el banco, contexto que no cabe en un campo.
+  notasInternas    String? @db.Text
+
   // Llave de Trabajo del BDT. El banco la emite POR RIF, no por cuenta: una
   // organización con varias cuentas comparte llave. Campo de SOLO ESCRITURA:
   // se pega y nunca se vuelve a leer completa desde la interfaz.

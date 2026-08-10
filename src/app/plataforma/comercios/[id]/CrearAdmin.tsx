@@ -71,7 +71,7 @@ export default function CrearAdmin({
   return (
     <form action={accion} className="rounded-control border border-tinta-borde bg-tinta-fondo p-4">
       <input type="hidden" name="organizationId" value={organizationId} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-tinta-tenue">Usuario</label>
           <input name="usuario" defaultValue={`admin-${slug}`} required className={campo} />
@@ -81,6 +81,12 @@ export default function CrearAdmin({
             Nombre del responsable
           </label>
           <input name="nombre" required className={campo} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-tinta-tenue">
+            Correo (recibe los avisos del alta)
+          </label>
+          <input name="email" inputMode="email" placeholder="dueno@comercio.com" className={campo} />
         </div>
       </div>
       {estado && !estado.ok && (

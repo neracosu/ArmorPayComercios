@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 import GestionLogo from "./GestionLogo";
+import GestionContacto from "./GestionContacto";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,9 @@ export default async function PerfilPage() {
           id: true,
           razonSocial: true,
           rif: true,
+          contactoNombre: true,
+          contactoTelefono: true,
+          contactoEmail: true,
           logoMime: true,
           logoUpdatedAt: true,
           authKeyStatus: true,
@@ -99,6 +103,12 @@ export default async function PerfilPage() {
         </div>
 
         <GestionLogo logoUrl={logoUrl} />
+
+        <GestionContacto
+          contactoNombre={comercio?.contactoNombre ?? null}
+          contactoTelefono={comercio?.contactoTelefono ?? null}
+          contactoEmail={comercio?.contactoEmail ?? null}
+        />
 
         {/* Cuentas afiliadas */}
         <section className="mt-6 rounded-card border border-tinta-borde bg-white p-6">
