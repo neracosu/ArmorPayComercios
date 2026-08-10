@@ -604,6 +604,7 @@ export async function eliminarComercio(
   await db.$transaction([
     db.webhookDelivery.deleteMany({ where }),
     db.paymentClaim.deleteMany({ where }),
+    db.validationRequest.deleteMany({ where }),
     db.checkoutIntent.deleteMany({ where }),
     db.apiEvent.deleteMany({ where }),
     db.apiKey.deleteMany({ where }),

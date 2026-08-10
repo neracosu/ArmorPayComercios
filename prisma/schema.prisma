@@ -123,6 +123,7 @@ model Organization {
   checkoutIntents  CheckoutIntent[]
   webhookEndpoints WebhookEndpoint[]
   recaudos         Recaudo[]
+  validations      ValidationRequest[]
 
   @@index([status])
 }
@@ -156,10 +157,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  branch       Branch?        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  organization Organization?       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict)
   shifts       Shift[]
   claims       PaymentClaim[]
+  validations  ValidationRequest[]
 
   @@index([organizationId])
 }
@@ -194,7 +196,8 @@ model BankAccount {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  validations  ValidationRequest[]
 
   @@index([organizationId])
 }
@@ -290,9 +293,12 @@ model PaymentClaim {
   shiftId           String? // null = cobro de checkout, sin caja
   userId            String?
   branchId          String?
-  source            ClaimSource @default(LOOKUP)
-  bankTransactionId String?
-  checkoutIntentId  String?     @unique
+  source              ClaimSource @default(LOOKUP)
+  bankTransactionId   String?
+  checkoutIntentId    String?     @unique
+  // Cobro nacido de una consulta online o de un C2P de caja. @unique: una
+  // validación respalda UN cobro primario (los duplicados van sin vínculo).
+  validationRequestId String?     @unique
   reference         String
   amount            Decimal     @db.Decimal(18, 2)
   numeroCuenta      String
@@ -309,14 +315,57 @@ model PaymentClaim {
   shift           Shift?           @relation(fields: [shiftId], references: [id], onDelete: Restrict)
   user            User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
   branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  bankTransaction BankTransaction? @relation(fields: [bankTransactionId], references: [id], onDelete: Restrict)
-  checkoutIntent  CheckoutIntent?  @relation(fields: [checkoutIntentId], references: [id], onDelete: Restrict)
+  bankTransaction   BankTransaction?   @relation(fields: [bankTransactionId], references: [id], onDelete: Restrict)
+  checkoutIntent    CheckoutIntent?    @relation(fields: [checkoutIntentId], references: [id], onDelete: Restrict)
+  validationRequest ValidationRequest? @relation(fields: [validationRequestId], references: [id], onDelete: Restrict)
   duplicateOf     PaymentClaim?    @relation("Dup", fields: [duplicateOfId], references: [id], onDelete: SetNull)
   duplicates      PaymentClaim[]   @relation("Dup")
 
   @@index([organizationId, claimedAt])
   @@index([shiftId])
   @@index([bankTransactionId])
+}
+
+enum ValidationType {
+  VAL_P2P // Pago Móvil recibido en una cuenta afiliada (consulta BDT)
+  VAL_P2P_CC // Pago Móvil recibido en un código de comercio (consulta BDT)
+  VAL_TRANSFER // Transferencia / crédito inmediato (consulta BDT)
+  VAL_TRANSACTION // Movimiento genérico por fecha/monto/ref (consulta BDT, NO cobrable)
+  BT_C2P // Cobro «Botón de Pago» del Tesoro ejecutado desde la caja
+}
+
+/// Bitácora de consultas en línea al banco y cobros C2P de caja — el
+/// equivalente del ValidationRequest del panel interno. Cada intento queda,
+/// exitoso o no: es la evidencia de qué se le preguntó al banco y qué
+/// respondió. Un resultado exitoso y cobrable respalda UN PaymentClaim
+/// (flujo ONLINE, mismo árbitro `primaryKey` de siempre).
+model ValidationRequest {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  type           ValidationType
+  accountId      String? // cuenta consultada (null en VAL_P2P_CC, que va por comercio)
+  merchantCode   String?
+  date           String // YYYYMMDD tecleado por la caja (en C2P: fecha local del cobro)
+  amount         String
+  reference      String // en C2P la emite el banco al aprobar; vacía en rechazo
+  bankCode       String?
+  phone          String?
+  dni            String?
+  trace          String // trace BDT o numeroLote C2P — correlación con el banco
+  responseCode   String
+  responseMsg    String
+  rawResponse    String         @db.Text
+  durationMs     Int
+  createdAt      DateTime       @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  account      BankAccount?  @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  claim        PaymentClaim?
+
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────────

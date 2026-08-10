@@ -72,7 +72,8 @@ export function execC2pPago(input: {
   monto: string;
   otp: string;
   concepto?: string;
-  intentId: string;
+  /** Correlación con el CheckoutIntent; ausente = cobro de caja. */
+  intentId?: string;
 }): Promise<ExecC2pPagoResult> {
   return execCall<ExecC2pPagoResult>("/exec/c2p/pago", input);
 }
@@ -87,4 +88,30 @@ export function execBdtMovimientos(input: {
   fecha: string; // YYYYMMDD
 }): Promise<{ ok: boolean; code: string; message: string; transactions: unknown[] }> {
   return execCall("/exec/bdt/movimientos", input);
+}
+
+export type TipoValidacionBdt = "VAL_P2P" | "VAL_P2P_CC" | "VAL_TRANSFER" | "VAL_TRANSACTION";
+
+export interface ExecBdtValidarResult {
+  code: string;
+  message: string;
+  raw: string;
+  trace: string;
+  durationMs: number;
+}
+
+/** Las 4 consultas online del gestor BDT. El veredicto lo traduce `bdt-codes`. */
+export function execBdtValidar(input: {
+  organizationId: string;
+  type: TipoValidacionBdt;
+  cuenta?: string; // 20 dígitos (todas menos VAL_P2P_CC)
+  codigoComercio?: string; // solo VAL_P2P_CC
+  fecha: string; // YYYYMMDD
+  monto: string; // "1234.56"
+  referencia: string; // 3-10 dígitos
+  bancoEmisor?: string; // 4 dígitos (todas menos VAL_TRANSACTION)
+  telefono?: string; // VAL_P2P y VAL_P2P_CC
+  cedula?: string; // VAL_TRANSFER
+}): Promise<ExecBdtValidarResult> {
+  return execCall<ExecBdtValidarResult>("/exec/bdt/validar", input);
 }

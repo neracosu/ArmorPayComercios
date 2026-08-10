@@ -2,7 +2,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { z } from "zod";
 import { verify, SIGNATURE_HEADER, TIMESTAMP_HEADER } from "./contract";
 import { c2pBancos, c2pPago, type BtC2pBanco } from "./bt-c2p";
-import { movimientosDelDia } from "./bdt";
+import {
+  movimientosDelDia,
+  validarMovimiento,
+  validarP2p,
+  validarP2pComercio,
+  validarTransferencia,
+} from "./bdt";
 import { prisma } from "../src/lib/prisma";
 import { runAsPlatform } from "../src/lib/tenant-context";
 import { descifrar } from "../src/lib/crypto";
@@ -62,6 +68,16 @@ function normalizeCedula(cedula: string): string {
   return clean;
 }
 
+/**
+ * El gestor BDT espera teléfonos venezolanos en 10 dígitos (sin prefijo país
+ * ni 0). Los comprobantes traen 58XXXXXXXXXX y las cajas tipean 04XXXXXXXXXX.
+ */
+function normalizeTelefono(telefono: string): string {
+  if (/^58\d{10}$/.test(telefono)) return telefono.slice(2);
+  if (/^0\d{10}$/.test(telefono)) return telefono.slice(1);
+  return telefono;
+}
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -92,14 +108,27 @@ const pagoSchema = z.object({
   monto: z.string().regex(/^\d{1,16}\.\d{2}$/, "monto con punto y 2 decimales"),
   otp: z.string().regex(/^\d{4,12}$/, "clave dinámica numérica"),
   concepto: z.string().max(40).optional(),
-  /** Correlación con el CheckoutIntent del SaaS; solo para bitácora y logs. */
-  intentId: z.string().min(1),
+  /** Correlación con el CheckoutIntent del SaaS; ausente = cobro de caja. */
+  intentId: z.string().min(1).optional(),
 });
 
 const movimientosSchema = z.object({
   organizationId: z.string().min(1),
   cuenta: z.string().regex(/^\d{20}$/, "cuenta de 20 dígitos"),
   fecha: z.string().regex(/^\d{8}$/, "fecha YYYYMMDD"),
+});
+
+const validarSchema = z.object({
+  organizationId: z.string().min(1),
+  type: z.enum(["VAL_P2P", "VAL_P2P_CC", "VAL_TRANSFER", "VAL_TRANSACTION"]),
+  cuenta: z.string().regex(/^\d{20}$/, "cuenta de 20 dígitos").optional(),
+  codigoComercio: z.string().min(1).max(20).optional(),
+  fecha: z.string().regex(/^\d{8}$/, "fecha YYYYMMDD"),
+  monto: z.string().regex(/^\d{1,16}\.\d{2}$/, "monto con punto y 2 decimales"),
+  referencia: z.string().regex(/^\d{3,10}$/, "referencia de 3 a 10 dígitos"),
+  bancoEmisor: z.string().regex(/^\d{4}$/).optional(),
+  telefono: z.string().regex(/^\d{10,12}$/).optional(),
+  cedula: z.string().min(2).max(15).optional(),
 });
 
 // ─────────────────────────────────────────────
@@ -165,7 +194,7 @@ async function handlePago(body: unknown, res: ServerResponse, log: Log): Promise
     // Error de red: el banco no respondió. OJO: el débito PUDO haberse hecho —
     // el SaaS debe tratar NETERR como "desconocido", nunca como rechazo.
     const msg = (e as Error).message.slice(0, 250);
-    log(`exec /c2p/pago NETERR intent=${input.intentId}: ${msg}`);
+    log(`exec /c2p/pago NETERR intent=${input.intentId ?? "caja"}: ${msg}`);
     json(res, 502, { code: "NETERR", message: "El banco no respondió", detail: msg });
     return;
   }
@@ -185,7 +214,7 @@ async function handlePago(body: unknown, res: ServerResponse, log: Log): Promise
     : null;
 
   log(
-    `exec /c2p/pago ${codres} intent=${input.intentId} ` +
+    `exec /c2p/pago ${codres} intent=${input.intentId ?? "caja"} ` +
       `ref=${data.referencia ? maskRef(data.referencia) : "-"} monto=${input.monto} ` +
       `lote=${data.numeroLote ?? "-"} ${r._http.durationMs}ms`
   );
@@ -205,6 +234,31 @@ async function handlePago(body: unknown, res: ServerResponse, log: Log): Promise
   });
 }
 
+/**
+ * AuthKey BDT operativa de una organización, o el error HTTP ya escrito.
+ * La llave se descifra acá y NUNCA sale del proceso.
+ */
+async function authKeyDeOrg(
+  organizationId: string,
+  res: ServerResponse
+): Promise<string | null> {
+  const org = await runAsPlatform("exec: AuthKey BDT de la organización", () =>
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { authKeyEnc: true, authKeyStatus: true },
+    })
+  );
+  if (!org) {
+    json(res, 404, { error: "organizacion_no_existe" });
+    return null;
+  }
+  if (!org.authKeyEnc || org.authKeyStatus === "SIN_LLAVE" || org.authKeyStatus === "INVALIDA") {
+    json(res, 422, { error: "llave_no_operativa", status: org.authKeyStatus });
+    return null;
+  }
+  return descifrar(org.authKeyEnc);
+}
+
 async function handleMovimientos(body: unknown, res: ServerResponse, log: Log): Promise<void> {
   const parsed = movimientosSchema.safeParse(body);
   if (!parsed.success) {
@@ -213,23 +267,9 @@ async function handleMovimientos(body: unknown, res: ServerResponse, log: Log): 
   }
   const input = parsed.data;
 
-  const org = await runAsPlatform("exec: AuthKey BDT de la organización", () =>
-    prisma.organization.findUnique({
-      where: { id: input.organizationId },
-      select: { authKeyEnc: true, authKeyStatus: true },
-    })
-  );
-  if (!org) {
-    json(res, 404, { error: "organizacion_no_existe" });
-    return;
-  }
-  if (!org.authKeyEnc || org.authKeyStatus === "SIN_LLAVE" || org.authKeyStatus === "INVALIDA") {
-    json(res, 422, { error: "llave_no_operativa", status: org.authKeyStatus });
-    return;
-  }
-
   // La cuenta es dato del request, no secreto; la llave nunca sale de acá.
-  const authKey = descifrar(org.authKeyEnc);
+  const authKey = await authKeyDeOrg(input.organizationId, res);
+  if (!authKey) return;
   const r = await movimientosDelDia(authKey, input.cuenta, input.fecha);
 
   log(
@@ -242,6 +282,84 @@ async function handleMovimientos(body: unknown, res: ServerResponse, log: Log): 
     code: r.code,
     message: r.message,
     transactions: (r.datos as { transactions?: unknown[] }).transactions ?? [],
+    durationMs: r.http.duracionMs,
+  });
+}
+
+/**
+ * Validación online con datos completos (las 4 consultas del gestor BDT).
+ * El veredicto de negocio (¿cobrable?) lo decide el SaaS con el catálogo de
+ * códigos; acá solo se ejecuta la consulta con la llave correcta.
+ */
+async function handleValidar(body: unknown, res: ServerResponse, log: Log): Promise<void> {
+  const parsed = validarSchema.safeParse(body);
+  if (!parsed.success) {
+    json(res, 400, { error: "payload_invalido", issues: parsed.error.issues });
+    return;
+  }
+  const input = parsed.data;
+
+  const porComercio = input.type === "VAL_P2P_CC";
+  if (porComercio ? !input.codigoComercio : !input.cuenta) {
+    json(res, 400, { error: porComercio ? "falta_codigo_comercio" : "falta_cuenta" });
+    return;
+  }
+  if (input.type !== "VAL_TRANSACTION" && !input.bancoEmisor) {
+    json(res, 400, { error: "falta_banco_emisor" });
+    return;
+  }
+  if ((input.type === "VAL_P2P" || porComercio) && !input.telefono) {
+    json(res, 400, { error: "falta_telefono" });
+    return;
+  }
+  if (input.type === "VAL_TRANSFER" && !input.cedula) {
+    json(res, 400, { error: "falta_cedula" });
+    return;
+  }
+
+  const authKey = await authKeyDeOrg(input.organizationId, res);
+  if (!authKey) return;
+
+  const base = { date: input.fecha, amount: input.monto, refe: input.referencia };
+  let r;
+  switch (input.type) {
+    case "VAL_TRANSACTION":
+      r = await validarMovimiento(authKey, input.cuenta!, base);
+      break;
+    case "VAL_P2P":
+      r = await validarP2p(authKey, input.cuenta!, {
+        ...base,
+        bank: input.bancoEmisor!,
+        phone: normalizeTelefono(input.telefono!),
+      });
+      break;
+    case "VAL_P2P_CC":
+      r = await validarP2pComercio(authKey, input.codigoComercio!, {
+        ...base,
+        bank: input.bancoEmisor!,
+        phone: normalizeTelefono(input.telefono!),
+      });
+      break;
+    case "VAL_TRANSFER":
+      r = await validarTransferencia(authKey, input.cuenta!, {
+        ...base,
+        bank: input.bancoEmisor!,
+        dni: normalizeCedula(input.cedula!),
+      });
+      break;
+  }
+
+  log(
+    `exec /bdt/validar ${input.type} ${r.code} ` +
+      `${porComercio ? `comercio=${input.codigoComercio}` : `cuenta=****${input.cuenta!.slice(-4)}`} ` +
+      `ref=${maskRef(input.referencia)} monto=${input.monto} ${r.http.duracionMs}ms`
+  );
+
+  json(res, 200, {
+    code: r.code,
+    message: r.message,
+    raw: JSON.stringify(r.datos),
+    trace: r.http.trace,
     durationMs: r.http.duracionMs,
   });
 }
@@ -292,6 +410,7 @@ export function startExecServer(log: Log): Server {
       if (path === "/exec/c2p/pago") return await handlePago(body, res, log);
       if (path === "/exec/c2p/bancos") return await handleBancos(res, log);
       if (path === "/exec/bdt/movimientos") return await handleMovimientos(body, res, log);
+      if (path === "/exec/bdt/validar") return await handleValidar(body, res, log);
 
       json(res, 404, { error: "ruta_desconocida" });
     } catch (e) {

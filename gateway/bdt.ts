@@ -26,7 +26,7 @@ export interface RespuestaBdt<T = Record<string, unknown>> {
   code: string;
   message: string;
   datos: T;
-  http: { status: number; duracionMs: number };
+  http: { status: number; duracionMs: number; trace: string };
 }
 
 /**
@@ -79,9 +79,10 @@ async function llamar<T>(
   const url = `${base}${ruta}${qs.toString() ? `?${qs}` : ""}`;
 
   const inicio = Date.now();
+  const trace = String(Date.now() % 1_000_000);
   const res = await request(url, {
     method: "GET",
-    headers: { AuthKey: authKey, TmSt: tmst(), Trace: String(Date.now() % 1_000_000) },
+    headers: { AuthKey: authKey, TmSt: tmst(), Trace: trace },
     dispatcher: agente,
   });
   const texto = await res.body.text();
@@ -98,7 +99,7 @@ async function llamar<T>(
     code: (parsed.code as string) ?? "ERR0000",
     message: (parsed.message as string) ?? "Sin mensaje",
     datos: parsed as T,
-    http: { status: res.statusCode, duracionMs },
+    http: { status: res.statusCode, duracionMs, trace },
   };
 }
 
@@ -116,6 +117,48 @@ export function cuentasDeLaLlave(authKey: string) {
     authKey,
     "/api/v1/bank/accounts"
   );
+}
+
+/**
+ * Las cuatro validaciones online del gestor (guía v1.11) — el pago YA ocurrió
+ * y se le pregunta al banco si existe con esos datos exactos. Mismos endpoints
+ * que usa el panel interno en producción desde 2025.
+ */
+
+/** Movimiento genérico por fecha/monto/referencia (puede ser un débito). */
+export function validarMovimiento(
+  authKey: string,
+  cuenta: string,
+  q: { date: string; amount: string; refe: string }
+) {
+  return llamar(authKey, `/api/v1/bank/accounts/${encodeURIComponent(cuenta)}/val_transaction`, q);
+}
+
+/** Pago Móvil recibido en una cuenta afiliada. */
+export function validarP2p(
+  authKey: string,
+  cuenta: string,
+  q: { date: string; amount: string; refe: string; bank: string; phone: string }
+) {
+  return llamar(authKey, `/api/v1/bank/accounts/${encodeURIComponent(cuenta)}/val_p2p`, q);
+}
+
+/** Pago Móvil recibido en un código de comercio afiliado. */
+export function validarP2pComercio(
+  authKey: string,
+  comercio: string,
+  q: { date: string; amount: string; refe: string; bank: string; phone: string }
+) {
+  return llamar(authKey, `/api/v1/bank/merchants/${encodeURIComponent(comercio)}/val_p2p_cc`, q);
+}
+
+/** Transferencia (crédito inmediato) recibida en una cuenta afiliada. */
+export function validarTransferencia(
+  authKey: string,
+  cuenta: string,
+  q: { date: string; amount: string; refe: string; bank: string; dni: string }
+) {
+  return llamar(authKey, `/api/v1/bank/accounts/${encodeURIComponent(cuenta)}/val_transfer`, q);
 }
 
 /** Créditos del día en una cuenta, para la consulta en vivo. */
