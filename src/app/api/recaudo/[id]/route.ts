@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Sirve un documento del expediente. NO es público: lo ve la plataforma
- * (revisión) y el propio comercio dueño — nadie más. El tenant del ORG_ADMIN
- * lo acota la extensión, no un `where` a mano.
+ * (admin Y revisora — dictaminar un recaudo exige poder VER el documento) y
+ * el propio comercio dueño — nadie más. El tenant del ORG_ADMIN lo acota la
+ * extensión, no un `where` a mano.
  */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getVerifiedSession();
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   let recaudo: { archivo: Buffer | Uint8Array; mime: string; nombre: string } | null = null;
 
-  if (session.user.role === "PLATFORM_ADMIN") {
+  if (session.user.role === "PLATFORM_ADMIN" || session.user.role === "PLATFORM_REVIEWER") {
     recaudo = await runAsPlatform("recaudo: revisión de plataforma", () =>
       prisma.recaudo.findUnique({
         where: { id: params.id },
