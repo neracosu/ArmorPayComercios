@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type LeadEstado } from "@prisma/client";
 import { Inbox } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import TarjetaLead from "./TarjetaLead";
@@ -10,7 +11,17 @@ export const dynamic = "force-dynamic";
 // pantalla es intencionalmente multi-comercio. El aislamiento acá lo da el rol.
 const db = new PrismaClient();
 
-export default async function SolicitudesPage() {
+const FILTROS: Array<{ clave: string; texto: string; estados: LeadEstado[] }> = [
+  { clave: "", texto: "Pendientes", estados: ["NUEVO", "CONTACTADO"] },
+  { clave: "convertidas", texto: "Convertidas", estados: ["CONVERTIDO"] },
+  { clave: "descartadas", texto: "Descartadas", estados: ["DESCARTADO"] },
+];
+
+export default async function SolicitudesPage({
+  searchParams,
+}: {
+  searchParams: { ver?: string };
+}) {
   const session = await getVerifiedSession();
   if (!session) redirect("/login?callbackUrl=/plataforma/solicitudes");
   // La revisora VE la cola (su nav la promete); convertir y descartar siguen
@@ -19,8 +30,11 @@ export default async function SolicitudesPage() {
   if (rol !== "PLATFORM_ADMIN" && rol !== "PLATFORM_REVIEWER") redirect("/validar");
   const soloLectura = rol !== "PLATFORM_ADMIN";
 
+  // Antes solo se veían las pendientes: una solicitud convertida o descartada
+  // desaparecía de TODAS las pantallas, historia incluida.
+  const filtro = FILTROS.find((f) => f.clave === (searchParams.ver ?? "")) ?? FILTROS[0];
   const leads = await db.lead.findMany({
-    where: { estado: { in: ["NUEVO", "CONTACTADO"] } },
+    where: { estado: { in: filtro.estados } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -40,10 +54,28 @@ export default async function SolicitudesPage() {
         </p>
       </header>
 
+      <nav className="mb-6 flex gap-1.5" aria-label="Filtro de solicitudes">
+        {FILTROS.map((f) => (
+          <Link
+            key={f.clave}
+            href={f.clave ? `/plataforma/solicitudes?ver=${f.clave}` : "/plataforma/solicitudes"}
+            className={`rounded-control px-3 py-1.5 text-sm font-medium transition-colors ${
+              f.clave === filtro.clave
+                ? "bg-tinta text-white"
+                : "text-tinta-suave hover:bg-tinta-fondo"
+            }`}
+          >
+            {f.texto}
+          </Link>
+        ))}
+      </nav>
+
       {leads.length === 0 ? (
         <div className="rounded-card border border-dashed border-tinta-borde bg-white p-10 text-center">
           <Inbox className="mx-auto h-6 w-6 text-tinta-tenue" aria-hidden />
-          <p className="mt-3 font-medium text-tinta">No hay solicitudes pendientes</p>
+          <p className="mt-3 font-medium text-tinta">
+            {filtro.clave === "" ? "No hay solicitudes pendientes" : `No hay solicitudes ${filtro.texto.toLowerCase()}`}
+          </p>
           <p className="mt-1 text-sm text-tinta-tenue">
             Cuando alguien complete el formulario de la portada, aparece acá.
           </p>
@@ -53,7 +85,11 @@ export default async function SolicitudesPage() {
           {leads.map((lead) => (
             <TarjetaLead
               key={lead.id}
-              lead={{ ...lead, createdAt: lead.createdAt.toISOString() }}
+              lead={{
+                ...lead,
+                createdAt: lead.createdAt.toISOString(),
+                convertidoAt: lead.convertidoAt?.toISOString() ?? null,
+              }}
               soloLectura={soloLectura}
             />
           ))}

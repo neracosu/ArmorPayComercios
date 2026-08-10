@@ -5,6 +5,7 @@ import { getVerifiedSession } from "@/lib/session-guard";
 import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import { describeC2p } from "../../../../../gateway/bt-c2p-codes";
+import { describeBdt } from "@/lib/bdt-codes";
 import CrearAdmin from "./CrearAdmin";
 import PlanComercio from "./PlanComercio";
 import { PLANES, INFINITO } from "@/lib/planes";
@@ -54,12 +55,32 @@ export default async function ComercioPage({ params }: { params: { id: string } 
   });
   if (!comercio) notFound();
 
-  const [pagos, cobros, leadOrigen] = await Promise.all([
+  const [pagos, cobros, leadOrigen, eventosAdmin, consultasBanco] = await Promise.all([
     db.bankTransaction.count({ where: { organizationId: comercio.id } }),
     db.paymentClaim.count({ where: { organizationId: comercio.id } }),
     db.lead.findFirst({
       where: { organizationId: comercio.id },
       select: { contacto: true, email: true, telefono: true, createdAt: true },
+    }),
+    db.platformEvent.findMany({
+      where: { targetOrgId: comercio.id },
+      orderBy: { createdAt: "desc" },
+      take: 15,
+    }),
+    db.validationRequest.findMany({
+      where: { organizationId: comercio.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        type: true,
+        reference: true,
+        amount: true,
+        responseCode: true,
+        durationMs: true,
+        createdAt: true,
+        user: { select: { name: true } },
+      },
     }),
   ]);
 
@@ -480,6 +501,71 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           ))}
         </ul>
       </section>
+
+      {/* Consultas al banco: lo que sus cajas le preguntaron y qué respondió */}
+      {consultasBanco.length > 0 && (
+        <section className="mt-8">
+          <details>
+            <summary className="cursor-pointer font-display font-bold tracking-tight text-tinta">
+              Consultas al banco ({consultasBanco.length} recientes)
+            </summary>
+            <ul className="mt-3 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
+              {consultasBanco.map((v) => {
+                const info =
+                  v.type === "BT_C2P"
+                    ? describeC2p(v.responseCode, "")
+                    : describeBdt(v.responseCode);
+                return (
+                  <li key={v.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-sm">
+                    <span className="shrink-0 rounded-control bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-suave">
+                      {v.type.replace("VAL_", "").replace("_", " ")}
+                    </span>
+                    <span className="min-w-0 flex-1 text-tinta-tenue">
+                      ref …{v.reference.slice(-6) || "—"} · Bs {v.amount} ·{" "}
+                      <span className="text-tinta">{v.responseCode}</span> — {info.headline}
+                    </span>
+                    <span className="shrink-0 text-xs text-tinta-tenue">
+                      {v.user.name} · {new Date(v.createdAt).toLocaleString("es-VE")}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
+        </section>
+      )}
+
+      {/* Historial administrativo del comercio, con autor */}
+      {eventosAdmin.length > 0 && (
+        <section className="mt-6">
+          <details>
+            <summary className="cursor-pointer font-display font-bold tracking-tight text-tinta">
+              Historial administrativo ({eventosAdmin.length} recientes)
+            </summary>
+            <ul className="mt-3 space-y-1.5 rounded-card border border-tinta-borde bg-white p-4 text-sm text-tinta-tenue">
+              {eventosAdmin.map((e) => (
+                <li key={e.id}>
+                  <span className="text-tinta">{e.action}</span>
+                  {e.detail ? ` · ${e.detail}` : ""} · {e.actor} ·{" "}
+                  {new Date(e.createdAt).toLocaleString("es-VE")}
+                </li>
+              ))}
+            </ul>
+            {session?.user.role === "PLATFORM_ADMIN" && (
+              <p className="mt-2 text-xs text-tinta-tenue">
+                Historial completo en{" "}
+                <Link
+                  href={`/plataforma/bitacora?org=${comercio.id}`}
+                  className="font-medium text-marca-700 hover:underline"
+                >
+                  la bitácora de la plataforma
+                </Link>
+                .
+              </p>
+            )}
+          </details>
+        </section>
+      )}
 
       {/* Borrado total: solo el PLATFORM_ADMIN — la revisora ni lo ve */}
       {session?.user.role === "PLATFORM_ADMIN" && (

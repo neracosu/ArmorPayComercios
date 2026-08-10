@@ -219,6 +219,27 @@ export function FormularioCuenta({ organizationId }: { organizationId: string })
           <label className="mb-1 block text-xs font-medium text-tinta-tenue">Alias</label>
           <input name="alias" required placeholder="Cuenta principal" className={campo} />
         </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-tinta-tenue">Banco</label>
+          <select name="banco" required defaultValue="BDT" className={campo}>
+            <option value="BDT">BDT — Banco Digital de los Trabajadores</option>
+            <option value="BT">BT — Banco del Tesoro</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-tinta-tenue">
+            Código de comercio BDT (opcional)
+          </label>
+          <input
+            name="merchantCode"
+            inputMode="numeric"
+            placeholder="1234"
+            className={`${campo} font-mono`}
+          />
+          <p className="mt-1 text-xs text-tinta-tenue">
+            Habilita la consulta «P2P por comercio» en su caja.
+          </p>
+        </div>
       </div>
       <Aviso r={estado} />
       <div className="mt-3">

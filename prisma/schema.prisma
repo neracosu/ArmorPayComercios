@@ -145,6 +145,27 @@ model Organization {
   @@index([status])
 }
 
+/// Bitácora de acciones administrativas de la plataforma: quién activó, quién
+/// borró, quién aprobó qué. La columna se llama `targetOrgId` y NO
+/// `organizationId` A PROPÓSITO: la extensión de tenant protege todo modelo
+/// con esa columna, y esta bitácora es DE LA PLATAFORMA — se lee sin contexto
+/// de tenant y debe sobrevivir al borrado del comercio (por eso tampoco lleva
+/// FK; `detail` guarda razón social y RIF cuando el objetivo es una org).
+model PlatformEvent {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  /// Username del actor al momento del acto (no depende de que el user siga).
+  actor       String
+  targetOrgId String?
+  action      String
+  detail      String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetOrgId, createdAt])
+  @@index([action, createdAt])
+}
+
 /// Bitácora de la Llave de Trabajo. Visible para el comercio: es su credencial.
 model AuthKeyEvent {
   id             String   @id @default(cuid())

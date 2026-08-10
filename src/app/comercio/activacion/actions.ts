@@ -116,6 +116,9 @@ const cuentaSchema = z.object({
   numero: z.string().trim().regex(/^\d{20}$/, "La cuenta son 20 dígitos, sin espacios"),
   banco: z.enum(["BDT", "BT"]),
   alias: z.string().trim().min(2, "Ponle un alias para reconocerla").max(60),
+  // Código de comercio BDT (P2C), si el banco le asignó uno: habilita la
+  // consulta «P2P por comercio» en su caja.
+  merchantCode: z.string().trim().regex(/^\d{1,20}$/, "Solo dígitos").optional().or(z.literal("")),
 });
 
 export async function registrarCuenta(
@@ -135,6 +138,10 @@ export async function registrarCuenta(
           accountNumber: parsed.data.numero,
           banco: parsed.data.banco,
           alias: parsed.data.alias,
+          merchantCode:
+            parsed.data.banco === "BDT" && parsed.data.merchantCode
+              ? parsed.data.merchantCode
+              : null,
           // POR APROBAR: hasta que nosotros la activemos, la ingesta no le
           // atribuye pagos. La cuenta es dinero — la aprobación es nuestra.
           isActive: false,

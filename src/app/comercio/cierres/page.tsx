@@ -14,10 +14,24 @@ function bs(n: number): string {
   return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default async function CierresPage() {
+export default async function CierresPage({
+  searchParams,
+}: {
+  searchParams: { desde?: string; hasta?: string };
+}) {
   const session = await getVerifiedSession();
   if (!session) redirect("/login?callbackUrl=/comercio/cierres");
   if (session.user.role !== "ORG_ADMIN") redirect("/validar");
+
+  // Filtro por rango de fechas (día completo, hora Venezuela). Sin filtro se
+  // listan los últimos 30 turnos, como siempre.
+  const rangoDesde = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.desde ?? "")
+    ? new Date(`${searchParams.desde}T00:00:00-04:00`)
+    : null;
+  const rangoHasta = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.hasta ?? "")
+    ? new Date(`${searchParams.hasta}T23:59:59.999-04:00`)
+    : null;
+  const hayRango = Boolean(rangoDesde || rangoHasta);
 
   const { comercio, hoy, turnos, duplicados, abiertos, checkoutHoy, consumo } =
     await withSessionTenant(session, async () => {
@@ -34,8 +48,16 @@ export default async function CierresPage() {
         _sum: { amount: true },
       }),
       prisma.shift.findMany({
+        where: hayRango
+          ? {
+              openedAt: {
+                ...(rangoDesde ? { gte: rangoDesde } : {}),
+                ...(rangoHasta ? { lte: rangoHasta } : {}),
+              },
+            }
+          : undefined,
         orderBy: [{ status: "asc" }, { openedAt: "desc" }],
-        take: 30,
+        take: hayRango ? 200 : 30,
         select: {
           id: true,
           status: true,
@@ -196,7 +218,40 @@ export default async function CierresPage() {
         )}
 
         <section className="mt-8">
-          <h2 className="font-display font-bold tracking-tight text-tinta">Turnos</h2>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 className="font-display font-bold tracking-tight text-tinta">Turnos</h2>
+            <form method="get" className="flex flex-wrap items-end gap-2 text-sm">
+              <label className="text-tinta-tenue">
+                Desde{" "}
+                <input
+                  type="date"
+                  name="desde"
+                  defaultValue={searchParams.desde ?? ""}
+                  className="rounded-control border border-tinta-borde bg-white px-2 py-1 text-tinta focus:border-marca-600 focus:outline-none"
+                />
+              </label>
+              <label className="text-tinta-tenue">
+                Hasta{" "}
+                <input
+                  type="date"
+                  name="hasta"
+                  defaultValue={searchParams.hasta ?? ""}
+                  className="rounded-control border border-tinta-borde bg-white px-2 py-1 text-tinta focus:border-marca-600 focus:outline-none"
+                />
+              </label>
+              <button
+                type="submit"
+                className="rounded-control border border-tinta-borde bg-white px-3 py-1.5 font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                Filtrar
+              </button>
+              {hayRango && (
+                <Link href="/comercio/cierres" className="px-2 py-1.5 text-tinta-tenue hover:text-tinta">
+                  Quitar
+                </Link>
+              )}
+            </form>
+          </div>
           {turnos.length === 0 ? (
             <p className="mt-2 text-sm text-tinta-tenue">Todavía no hay turnos.</p>
           ) : (

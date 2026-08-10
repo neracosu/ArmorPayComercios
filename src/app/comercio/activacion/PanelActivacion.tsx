@@ -188,6 +188,18 @@ function Cuentas({ cuentas }: { cuentas: CuentaVista[] }) {
             className="rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
           />
         </div>
+        <div>
+          <label htmlFor="merchantCode" className="mb-1 block text-xs font-medium text-tinta-tenue">
+            Código de comercio BDT (opcional)
+          </label>
+          <input
+            id="merchantCode"
+            name="merchantCode"
+            inputMode="numeric"
+            placeholder="1234"
+            className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 font-mono text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
+          />
+        </div>
         <BotonEnviar etiqueta="Registrar" icono={<Landmark className="h-4 w-4" aria-hidden />} />
       </form>
       <Aviso r={resultado} />

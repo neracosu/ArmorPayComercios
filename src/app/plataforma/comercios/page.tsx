@@ -23,9 +23,25 @@ const LLAVE: Record<string, { texto: string; clase: string }> = {
   INVALIDA: { texto: "Rechazada por el banco", clase: "text-error" },
 };
 
-export default async function ComerciosPage() {
+export default async function ComerciosPage({
+  searchParams,
+}: {
+  searchParams: { q?: string; estado?: string };
+}) {
+  const q = (searchParams.q ?? "").trim();
+  const estado = Object.keys(ESTADO).includes(searchParams.estado ?? "")
+    ? searchParams.estado
+    : undefined;
+
+  // Con búsqueda y filtro, el corte a 100 deja de ser un problema: lo que no
+  // aparece se encuentra buscando (antes se listaba TODO, sin tope).
   const comercios = await db.organization.findMany({
+    where: {
+      ...(q ? { OR: [{ razonSocial: { contains: q } }, { rif: { contains: q } }] } : {}),
+      ...(estado ? { status: estado as never } : {}),
+    },
     orderBy: { createdAt: "desc" },
+    take: 100,
     select: {
       id: true,
       razonSocial: true,
@@ -45,12 +61,55 @@ export default async function ComerciosPage() {
         usuarios y su llave del banco.
       </p>
 
+      <form method="get" className="mt-5 flex flex-wrap items-end gap-3">
+        <div className="min-w-56 flex-1">
+          <label htmlFor="q" className="mb-1.5 block text-sm font-medium text-tinta-suave">
+            Buscar
+          </label>
+          <input
+            id="q"
+            name="q"
+            defaultValue={q}
+            placeholder="Razón social o RIF"
+            className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label htmlFor="estado" className="mb-1.5 block text-sm font-medium text-tinta-suave">
+            Estado
+          </label>
+          <select
+            id="estado"
+            name="estado"
+            defaultValue={estado ?? ""}
+            className="rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta focus:border-marca-600 focus:outline-none"
+          >
+            <option value="">Todos</option>
+            {Object.entries(ESTADO).map(([clave, e]) => (
+              <option key={clave} value={clave}>
+                {e.texto}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="rounded-control bg-marca-700 px-4 py-2 text-sm font-medium text-white hover:bg-marca-900"
+        >
+          Filtrar
+        </button>
+      </form>
+
       {comercios.length === 0 ? (
         <div className="mt-6 rounded-card border border-dashed border-tinta-borde bg-white p-10 text-center">
           <Building2 className="mx-auto h-6 w-6 text-tinta-tenue" aria-hidden />
-          <p className="mt-3 font-medium text-tinta">Todavía no hay comercios</p>
+          <p className="mt-3 font-medium text-tinta">
+            {q || estado ? "Nada coincide con ese filtro" : "Todavía no hay comercios"}
+          </p>
           <p className="mt-1 text-sm text-tinta-tenue">
-            Se crean convirtiendo una solicitud de la portada.
+            {q || estado
+              ? "Prueba con otra búsqueda u otro estado."
+              : "Se crean convirtiendo una solicitud de la portada."}
           </p>
         </div>
       ) : (
@@ -81,6 +140,11 @@ export default async function ComerciosPage() {
             </li>
           ))}
         </ul>
+      )}
+      {comercios.length >= 100 && (
+        <p className="mt-3 text-xs text-tinta-tenue">
+          Se muestran los 100 más recientes — usa la búsqueda para encontrar el resto.
+        </p>
       )}
     </main>
   );

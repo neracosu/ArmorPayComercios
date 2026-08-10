@@ -48,6 +48,31 @@ async function exigirRevision() {
   return session;
 }
 
+/**
+ * Deja constancia de una acción administrativa en la bitácora de plataforma
+ * (`PlatformEvent`). Fire-and-forget: la bitácora nunca rompe la acción que
+ * registra. Antes de esto, activar, borrar o aprobar no dejaba huella de
+ * quién lo hizo.
+ */
+function anotar(
+  session: { user: { id: string; username: string } },
+  action: string,
+  detail: string,
+  targetOrgId?: string | null
+): void {
+  void db.platformEvent
+    .create({
+      data: {
+        actorUserId: session.user.id,
+        actor: session.user.username,
+        action,
+        detail,
+        targetOrgId: targetOrgId ?? null,
+      },
+    })
+    .catch(() => {});
+}
+
 export type Resultado =
   | { ok: true; mensaje: string; credenciales?: { usuario: string; password: string } }
   | { ok: false; error: string };
@@ -66,6 +91,22 @@ async function correosAdminsComercio(organizationId: string): Promise<string[]> 
 }
 
 
+
+/** Nota interna de una solicitud (seguimiento del contacto). Solo ADMIN. */
+export async function guardarNotaLead(
+  _previo: Resultado | null,
+  datos: FormData
+): Promise<Resultado> {
+  await exigirPlataforma();
+
+  const leadId = String(datos.get("leadId") ?? "");
+  if (!leadId) return { ok: false, error: "Falta la solicitud." };
+  const nota = String(datos.get("notaInterna") ?? "").trim().slice(0, 2000);
+
+  await db.lead.update({ where: { id: leadId }, data: { notaInterna: nota || null } });
+  revalidatePath("/plataforma/solicitudes");
+  return { ok: true, mensaje: "Nota guardada." };
+}
 
 export async function cambiarEstadoLead(
   leadId: string,
@@ -277,6 +318,9 @@ const cuentaSchema = z.object({
   organizationId: z.string().min(1),
   accountNumber: z.string().trim().regex(/^\d{20}$/, "La cuenta son 20 dígitos, sin espacios"),
   alias: z.string().trim().min(2, "Pon un alias").max(120),
+  banco: z.enum(["BDT", "BT"]),
+  // Código de comercio BDT (P2C): habilita la consulta «P2P por comercio».
+  merchantCode: z.string().trim().regex(/^\d{1,20}$/).optional().or(z.literal("")),
 });
 
 /** Da de alta una cuenta afiliada. Sin cuenta, las cajas del comercio no ven pagos. */
@@ -284,11 +328,19 @@ export async function agregarCuenta(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
   const parsed = cuentaSchema.safeParse(Object.fromEntries(datos));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
-  const { organizationId, accountNumber, alias } = parsed.data;
+  const { organizationId, accountNumber, alias, banco } = parsed.data;
+  const merchantCode = parsed.data.merchantCode || null;
+  if (merchantCode && banco !== "BDT") {
+    return { ok: false, error: "El código de comercio es un concepto BDT." };
+  }
+  if (merchantCode) {
+    const dueño = await db.bankAccount.findUnique({ where: { merchantCode } });
+    if (dueño) return { ok: false, error: "Ese código de comercio ya pertenece a otra cuenta." };
+  }
   const existente = await db.bankAccount.findUnique({ where: { accountNumber } });
   if (existente) {
     return {
@@ -300,7 +352,10 @@ export async function agregarCuenta(
     };
   }
 
-  await db.bankAccount.create({ data: { organizationId, accountNumber, alias } });
+  await db.bankAccount.create({
+    data: { organizationId, accountNumber, alias, banco, merchantCode },
+  });
+  anotar(session, "cuenta_agregada", `${banco} …${accountNumber.slice(-4)}`, organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   return { ok: true, mensaje: "Cuenta agregada. Los pagos que entren a ella ya van a llegarle." };
 }
@@ -329,7 +384,7 @@ export async function crearAdminComercio(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
 
   const parsed = usuarioComercioSchema.safeParse(Object.fromEntries(datos));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
@@ -365,6 +420,7 @@ export async function crearAdminComercio(
     });
   }
 
+  anotar(session, "admin_creado", `${usuario} (${parsed.data.nombre})`, parsed.data.organizationId);
   revalidatePath(`/plataforma/comercios/${parsed.data.organizationId}`);
   return {
     ok: true,
@@ -378,11 +434,12 @@ export async function cambiarEstadoComercio(
   organizationId: string,
   suspender: boolean
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
   await db.organization.update({
     where: { id: organizationId },
     data: { status: suspender ? "SUSPENDIDA" : "ACTIVA" },
   });
+  anotar(session, suspender ? "comercio_suspendido" : "comercio_reactivado", "", organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   return {
     ok: true,
@@ -483,6 +540,7 @@ export async function convertirLead(
     return org;
   });
 
+  anotar(session, "comercio_creado", `${org.razonSocial} (${rif}) · admin ${usuario}`, org.id);
   revalidatePath("/plataforma/solicitudes");
   return {
     ok: true,
@@ -507,7 +565,7 @@ export async function guardarAfiliacionC2p(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
 
   const organizationId = String(datos.get("organizationId") ?? "");
   const codAfiliado = String(datos.get("codAfiliado") ?? "").trim();
@@ -538,6 +596,12 @@ export async function guardarAfiliacionC2p(
     },
   });
 
+  anotar(
+    session,
+    "c2p_configurado",
+    `afiliado ${codAfiliado || "—"} · ${habilitado ? "habilitado" : "apagado"}`,
+    organizationId
+  );
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   return {
     ok: true,
@@ -613,7 +677,7 @@ export async function eliminarComercio(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
 
   const organizationId = String(datos.get("organizationId") ?? "");
   const confirmacion = normalizarRif(String(datos.get("rifConfirmacion") ?? ""));
@@ -621,7 +685,7 @@ export async function eliminarComercio(
 
   const org = await db.organization.findUnique({
     where: { id: organizationId },
-    select: { rif: true },
+    select: { rif: true, razonSocial: true },
   });
   if (!org) return { ok: false, error: "Comercio no encontrado." };
   if (confirmacion !== org.rif) {
@@ -633,6 +697,17 @@ export async function eliminarComercio(
   // solicitud original, anterior al comercio: solo se les suelta el vínculo.
   const where = { organizationId };
   await db.$transaction([
+    // La constancia va EN la transacción: si el borrado ocurre, la huella
+    // queda sí o sí (sin FK a la org — le sobrevive; el detail dice quién era).
+    db.platformEvent.create({
+      data: {
+        actorUserId: session.user.id,
+        actor: session.user.username,
+        action: "comercio_eliminado",
+        detail: `${org.razonSocial} (${org.rif})`,
+        targetOrgId: organizationId,
+      },
+    }),
     db.webhookDelivery.deleteMany({ where }),
     db.paymentClaim.deleteMany({ where }),
     db.validationRequest.deleteMany({ where }),
@@ -756,6 +831,7 @@ export async function avanzarEstadoComercio(
     where: { id: organizationId },
     data: { status: paso.a as never },
   });
+  anotar(session, "ciclo_avanzado", `${org.razonSocial}: ${org.status} → ${paso.a}`, organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
 
@@ -809,7 +885,7 @@ export async function rechazarComercio(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
   const organizationId = String(datos.get("organizationId") ?? "");
   if (!organizationId) return { ok: false, error: "Falta el comercio." };
 
@@ -823,6 +899,7 @@ export async function rechazarComercio(
   }
 
   await db.organization.update({ where: { id: organizationId }, data: { status: "RECHAZADA" } });
+  anotar(session, "comercio_rechazado", "", organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
 
@@ -847,7 +924,7 @@ export async function revisarRecaudo(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirRevision();
+  const session = await exigirRevision();
 
   const id = String(datos.get("id") ?? "");
   const veredicto = String(datos.get("veredicto") ?? "");
@@ -865,6 +942,12 @@ export async function revisarRecaudo(
     select: { organizationId: true, tipo: true },
   });
 
+  anotar(
+    session,
+    veredicto === "aprobar" ? "recaudo_aprobado" : "recaudo_rechazado",
+    `${r.tipo}${nota ? ` · ${nota}` : ""}`,
+    r.organizationId
+  );
   revalidatePath(`/plataforma/comercios/${r.organizationId}`);
 
   // Solo el rechazo notifica: exige una acción del comercio. La aprobación
@@ -894,7 +977,7 @@ export async function aprobarCuenta(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirRevision();
+  const session = await exigirRevision();
 
   const id = String(datos.get("id") ?? "");
   if (!id) return { ok: false, error: "Falta la cuenta." };
@@ -905,6 +988,7 @@ export async function aprobarCuenta(
     select: { organizationId: true, accountNumber: true },
   });
 
+  anotar(session, "cuenta_aprobada", `…${r.accountNumber.slice(-4)}`, r.organizationId);
   revalidatePath(`/plataforma/comercios/${r.organizationId}`);
 
   const destinos = await correosAdminsComercio(r.organizationId);
@@ -943,7 +1027,7 @@ export async function crearUsuarioInterno(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
 
   const parsed = usuarioInternoSchema.safeParse(Object.fromEntries(datos));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
@@ -968,6 +1052,7 @@ export async function crearUsuarioInterno(
     throw e;
   }
 
+  anotar(session, "interno_creado", `${usuario} (${parsed.data.rol})`);
   revalidatePath("/plataforma/usuarios");
   return {
     ok: true,
@@ -1009,6 +1094,7 @@ export async function alternarUsuarioInterno(
     },
   });
 
+  anotar(session, objetivo.isActive ? "interno_desactivado" : "interno_reactivado", id);
   revalidatePath("/plataforma/usuarios");
   return { ok: true, mensaje: objetivo.isActive ? "Usuario desactivado y sesiones cerradas." : "Usuario reactivado." };
 }
@@ -1080,7 +1166,7 @@ export async function cambiarPlanComercio(
   _previo: Resultado | null,
   datos: FormData
 ): Promise<Resultado> {
-  await exigirPlataforma();
+  const session = await exigirPlataforma();
 
   const organizationId = String(datos.get("organizationId") ?? "");
   const plan = String(datos.get("plan") ?? "");
@@ -1094,6 +1180,7 @@ export async function cambiarPlanComercio(
     data: { plan: plan as "PRUEBA" | "COMERCIO" | "CADENA" },
   });
 
+  anotar(session, "plan_cambiado", plan, organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);
   revalidatePath("/plataforma/comercios");
   return { ok: true, mensaje: `Plan cambiado a ${plan}. Sus límites aplican ya.` };
@@ -1131,6 +1218,7 @@ export async function resetearClaveDeUsuario(
     },
   });
 
+  anotar(session, "clave_reseteada", objetivo.username, objetivo.organizationId);
   if (objetivo.organizationId) revalidatePath(`/plataforma/comercios/${objetivo.organizationId}`);
   revalidatePath("/plataforma/usuarios");
   return {

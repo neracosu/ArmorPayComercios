@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, Check, Loader2, Pencil, Plus } from "lucide-react";
-import { crearSucursal, renombrarSucursal, type ResultadoComercio } from "../actions";
+import { alternarSucursal, crearSucursal, renombrarSucursal, type ResultadoComercio } from "../actions";
 
-type Sucursal = { id: string; name: string; code: string; cajas: number };
+type Sucursal = { id: string; name: string; code: string; isActive: boolean; cajas: number };
 
 const campo =
   "w-full rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm focus:border-marca-600 focus:outline-none";
@@ -45,7 +45,14 @@ function Fila({ s }: { s: Sucursal }) {
           />
         ) : (
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-tinta">{s.name}</p>
+            <p className="text-sm font-medium text-tinta">
+              {s.name}
+              {!s.isActive && (
+                <span className="ml-2 rounded-control bg-error-suave px-2 py-0.5 text-xs font-normal text-error">
+                  inactiva
+                </span>
+              )}
+            </p>
             <p className="text-sm text-tinta-tenue">
               Código {s.code} · {s.cajas} caja(s)
             </p>
@@ -76,14 +83,27 @@ function Fila({ s }: { s: Sucursal }) {
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setEditando(true)}
-            className="inline-flex items-center gap-1.5 rounded-control border border-tinta-borde px-3 py-1.5 text-sm text-tinta-suave hover:bg-tinta-fondo"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-            Renombrar
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setEditando(true)}
+              className="inline-flex items-center gap-1.5 rounded-control border border-tinta-borde px-3 py-1.5 text-sm text-tinta-suave hover:bg-tinta-fondo"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Renombrar
+            </button>
+            <button
+              type="button"
+              onClick={async () => setAviso(await alternarSucursal(s.id))}
+              className={`rounded-control border px-3 py-1.5 text-sm ${
+                s.isActive
+                  ? "border-alerta/40 text-alerta hover:bg-alerta-suave"
+                  : "border-tinta-borde text-tinta-suave hover:bg-tinta-fondo"
+              }`}
+            >
+              {s.isActive ? "Desactivar" : "Reactivar"}
+            </button>
+          </>
         )}
       </div>
       {aviso && (

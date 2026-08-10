@@ -16,7 +16,7 @@ export default async function SucursalesPage() {
     const [sucursales, comercio] = await Promise.all([
       prisma.branch.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true, code: true, _count: { select: { users: true } } },
+        select: { id: true, name: true, code: true, isActive: true, _count: { select: { users: true } } },
       }),
       prisma.organization.findUnique({
         where: { id: session.user.organizationId! },
@@ -46,6 +46,7 @@ export default async function SucursalesPage() {
             id: s.id,
             name: s.name,
             code: s.code,
+            isActive: s.isActive,
             cajas: s._count.users,
           }))}
         />

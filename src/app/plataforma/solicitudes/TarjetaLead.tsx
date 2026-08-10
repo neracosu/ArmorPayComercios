@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertCircle, Check, Copy, Loader2, UserPlus } from "lucide-react";
-import { convertirLead, cambiarEstadoLead, type Resultado } from "../actions";
+import { convertirLead, cambiarEstadoLead, guardarNotaLead, type Resultado } from "../actions";
 
 type Lead = {
   id: string;
@@ -17,6 +17,10 @@ type Lead = {
   banco: string | null;
   mensaje: string | null;
   estado: string;
+  notaInterna: string | null;
+  organizationId: string | null;
+  convertidoPor: string | null;
+  convertidoAt: string | null;
   createdAt: string;
 };
 
@@ -140,7 +144,40 @@ export default function TarjetaLead({
         </p>
       )}
 
-      {soloLectura ? null : !abierto ? (
+      {lead.estado === "CONVERTIDO" && (
+        <p className="mt-4 rounded-control bg-ok-suave/50 px-3 py-2 text-sm text-ok">
+          Convertida en comercio
+          {lead.convertidoPor ? ` por ${lead.convertidoPor}` : ""}
+          {lead.convertidoAt
+            ? ` el ${new Date(lead.convertidoAt).toLocaleDateString("es-VE")}`
+            : ""}
+          {lead.organizationId && (
+            <>
+              {" — "}
+              <a
+                href={`/plataforma/comercios/${lead.organizationId}`}
+                className="font-medium underline underline-offset-2"
+              >
+                abrir la ficha
+              </a>
+            </>
+          )}
+        </p>
+      )}
+
+      {!soloLectura && <NotaLead leadId={lead.id} notaInterna={lead.notaInterna} />}
+
+      {soloLectura || lead.estado === "CONVERTIDO" ? null : lead.estado === "DESCARTADO" ? (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => cambiarEstadoLead(lead.id, "NUEVO")}
+            className="rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+          >
+            Reabrir como nueva
+          </button>
+        </div>
+      ) : !abierto ? (
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
@@ -229,5 +266,62 @@ export default function TarjetaLead({
         </form>
       )}
     </article>
+  );
+}
+
+/** Nota interna de seguimiento («lo llamé el martes, pide precios…»). */
+function NotaLead({ leadId, notaInterna }: { leadId: string; notaInterna: string | null }) {
+  const [estado, accion] = useFormState<Resultado | null, FormData>(guardarNotaLead, null);
+  const [editando, setEditando] = useState(false);
+
+  if (!editando) {
+    return (
+      <div className="mt-3 flex items-start gap-2 text-sm">
+        {notaInterna ? (
+          <p className="min-w-0 flex-1 whitespace-pre-wrap rounded-control border border-dashed border-tinta-borde px-3 py-2 text-tinta-suave">
+            {notaInterna}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          className="shrink-0 rounded-control px-2 py-1 text-xs font-medium text-tinta-tenue hover:bg-tinta-fondo"
+        >
+          {notaInterna ? "Editar nota" : "+ Nota interna"}
+        </button>
+        {estado?.ok && <span className="text-xs text-ok">Guardada.</span>}
+      </div>
+    );
+  }
+
+  return (
+    <form
+      action={(fd) => {
+        accion(fd);
+        setEditando(false);
+      }}
+      className="mt-3"
+    >
+      <input type="hidden" name="leadId" value={leadId} />
+      <textarea
+        name="notaInterna"
+        rows={2}
+        maxLength={2000}
+        defaultValue={notaInterna ?? ""}
+        autoFocus
+        placeholder="Seguimiento del contacto — solo lo vemos nosotros."
+        className="w-full rounded-control border border-tinta-borde bg-white px-3 py-2 text-sm text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
+      />
+      <div className="mt-2 flex gap-2">
+        <Boton>Guardar nota</Boton>
+        <button
+          type="button"
+          onClick={() => setEditando(false)}
+          className="rounded-control px-3 py-1.5 text-sm text-tinta-tenue hover:bg-tinta-fondo"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }

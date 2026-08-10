@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Building2, Globe, Inbox, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, Building2, Globe, Inbox, ScrollText, ShieldAlert, Users } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import CerrarSesion from "@/components/CerrarSesion";
 import AutoRefresco from "@/components/AutoRefresco";
@@ -21,6 +21,7 @@ const SECCIONES = [
   { href: "/plataforma/checkout", icono: Globe, texto: "Checkout", soloAdmin: true },
   { href: "/plataforma/usuarios", icono: Users, texto: "Usuarios", soloAdmin: true },
   { href: "/plataforma/consumo", icono: BarChart3, texto: "Consumo", soloAdmin: true },
+  { href: "/plataforma/bitacora", icono: ScrollText, texto: "Bitácora", soloAdmin: true },
 ];
 
 export default async function PlataformaLayout({ children }: { children: React.ReactNode }) {

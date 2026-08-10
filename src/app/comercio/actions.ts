@@ -188,6 +188,52 @@ export async function alternarCaja(userId: string): Promise<ResultadoComercio> {
   });
 }
 
+/**
+ * Desactiva o reactiva una sucursal. Un local que cerró no se borra (sus
+ * cierres son historia contable) — se apaga. No se puede apagar con cajas
+ * activas asignadas ni si es la última encendida.
+ */
+export async function alternarSucursal(branchId: string): Promise<ResultadoComercio> {
+  const session = await exigirAdminComercio();
+
+  return withSessionTenant(session, async () => {
+    const sucursal = await prisma.branch.findFirst({
+      where: { id: branchId },
+      select: { id: true, isActive: true, name: true },
+    });
+    if (!sucursal) return { ok: false, error: "Esa sucursal no es de tu comercio." };
+
+    if (sucursal.isActive) {
+      const cajasActivas = await prisma.user.count({
+        where: { branchId, role: "OPERATOR", isActive: true },
+      });
+      if (cajasActivas > 0) {
+        return {
+          ok: false,
+          error: `Tiene ${cajasActivas} caja(s) activa(s). Reasígnalas o desactívalas primero.`,
+        };
+      }
+      const activas = await prisma.branch.count({ where: { isActive: true } });
+      if (activas <= 1) {
+        return { ok: false, error: "Es tu única sucursal activa: sin ella no se puede abrir turno." };
+      }
+    }
+
+    await prisma.branch.update({
+      where: { id: sucursal.id },
+      data: { isActive: !sucursal.isActive },
+    });
+
+    revalidatePath("/comercio/sucursales");
+    return {
+      ok: true,
+      mensaje: sucursal.isActive
+        ? `${sucursal.name} quedó desactivada.`
+        : `${sucursal.name} quedó activa de nuevo.`,
+    };
+  });
+}
+
 /** Resetea la contraseña de una caja y cierra sus sesiones. */
 export async function resetearClave(userId: string): Promise<ResultadoComercio> {
   const session = await exigirAdminComercio();
