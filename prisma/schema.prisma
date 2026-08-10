@@ -71,8 +71,15 @@ model Organization {
   // codAfiliado + rif (el servicio no usa secreto), así que acá no hay cifrado:
   // el gate operativo es `btC2pEnabled`, que solo se prende cuando el banco
   // confirma la afiliación del comercio.
-  btCodAfiliado String?
-  btC2pEnabled  Boolean @default(false)
+  // `btC2pVerifiedAt` no lo pone nadie a mano: lo estampa el primer cobro real
+  // aprobado (codres C2P0000) — el banco no ofrece cómo validar un afiliado
+  // sin ejecutar un cobro. `btC2pUltimoRebote` guarda el último codres de la
+  // familia afiliación (C2P0019, C2P0076…) para alertar en la ficha; un cobro
+  // aprobado lo limpia.
+  btCodAfiliado     String?
+  btC2pEnabled      Boolean   @default(false)
+  btC2pVerifiedAt   DateTime?
+  btC2pUltimoRebote String?
 
   // Credenciales BT del comercio ante el Tesoro: Cod_Socio + app_user +
   // app_key (las emite el banco por empresa; NO son el codAfiliado C2P de

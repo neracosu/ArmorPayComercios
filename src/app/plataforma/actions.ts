@@ -488,9 +488,22 @@ export async function guardarAfiliacionC2p(
     return { ok: false, error: "No se puede habilitar C2P sin el código de afiliado." };
   }
 
+  const actual = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { btCodAfiliado: true },
+  });
+  if (!actual) return { ok: false, error: "Comercio no encontrado." };
+
+  // La verificación (primer C2P0000 real) es DE un código concreto: cambiarlo
+  // la resetea, junto con cualquier rebote anotado del código anterior.
+  const codigoCambio = (codAfiliado || null) !== actual.btCodAfiliado;
   await db.organization.update({
     where: { id: organizationId },
-    data: { btCodAfiliado: codAfiliado || null, btC2pEnabled: habilitado },
+    data: {
+      btCodAfiliado: codAfiliado || null,
+      btC2pEnabled: habilitado,
+      ...(codigoCambio ? { btC2pVerifiedAt: null, btC2pUltimoRebote: null } : {}),
+    },
   });
 
   revalidatePath(`/plataforma/comercios/${organizationId}`);

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
-import { ArrowLeft, KeyRound, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
+import { describeC2p } from "../../../../../gateway/bt-c2p-codes";
 import CrearAdmin from "./CrearAdmin";
 import { FormularioLlave, FormularioCredencialesBt, FormularioCuenta } from "./LlaveYCuentas";
 import { FormularioC2p, FormularioLogo } from "./AfiliacionYLogo";
@@ -264,13 +265,45 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           <Zap className="h-4 w-4 text-marca-700" aria-hidden />
           C2P del Tesoro (Botón de Pago)
         </h2>
-        <p className={`mt-2 text-sm font-medium ${comercio.btC2pEnabled ? "text-ok" : "text-tinta-tenue"}`}>
+        <p
+          className={`mt-2 text-sm font-medium ${
+            !comercio.btC2pEnabled
+              ? "text-tinta-tenue"
+              : comercio.btC2pVerifiedAt
+                ? "text-ok"
+                : "text-alerta"
+          }`}
+        >
           {comercio.btC2pEnabled
-            ? `Habilitado · afiliado ${comercio.btCodAfiliado}`
+            ? comercio.btC2pVerifiedAt
+              ? `Verificado en producción · afiliado ${comercio.btCodAfiliado}`
+              : `Habilitado, sin probar · afiliado ${comercio.btCodAfiliado}`
             : comercio.btCodAfiliado
               ? `Afiliado ${comercio.btCodAfiliado} · apagado`
               : "Sin afiliación cargada"}
         </p>
+        {comercio.btC2pEnabled &&
+          (comercio.btC2pVerifiedAt ? (
+            <p className="mt-1 text-xs text-tinta-tenue">
+              Primer cobro aprobado: {new Date(comercio.btC2pVerifiedAt).toLocaleString("es-VE")}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-tinta-tenue">
+              El banco no da cómo probar un afiliado sin cobrar: pasará a verificado solo con el
+              primer cobro real aprobado.
+            </p>
+          ))}
+        {comercio.btC2pUltimoRebote && (
+          <p className="mt-2 flex items-start gap-2 rounded-control bg-error-suave px-3 py-2.5 text-sm text-error">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              El banco rebotó el último cobro por la afiliación —{" "}
+              {describeC2p(comercio.btC2pUltimoRebote).headline} ({comercio.btC2pUltimoRebote}).
+              Revisa el código y el estado del afiliado con el banco; un cobro aprobado limpia esta
+              alerta.
+            </span>
+          </p>
+        )}
         <FormularioC2p
           organizationId={comercio.id}
           codAfiliado={comercio.btCodAfiliado}

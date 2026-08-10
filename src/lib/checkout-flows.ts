@@ -4,7 +4,7 @@ import { registrarApiEvent } from "./api-rate-limit";
 import { encolarWebhooks, maskRef, toleranciaVES } from "./checkout";
 import { execC2pPago, ExecError } from "./exec-client";
 import { tasaBcv, usdAVes } from "./bcv";
-import { describeC2p } from "../../gateway/bt-c2p-codes";
+import { describeC2p, esReboteDeAfiliacion } from "../../gateway/bt-c2p-codes";
 
 /**
  * Los DOS flujos de cobro del checkout — referencia y C2P — como funciones
@@ -283,7 +283,12 @@ export async function cobrarPorC2p(
 > {
   const org = await prisma.organization.findUnique({
     where: { id: intent.organizationId },
-    select: { btC2pEnabled: true, btCodAfiliado: true },
+    select: {
+      btC2pEnabled: true,
+      btCodAfiliado: true,
+      btC2pVerifiedAt: true,
+      btC2pUltimoRebote: true,
+    },
   });
   if (!org?.btC2pEnabled || !org.btCodAfiliado) {
     return { ok: false, status: 422, code: "C2P_NOT_ENABLED", message: "Este comercio no tiene C2P habilitado." };
@@ -334,6 +339,15 @@ export async function cobrarPorC2p(
       detail: `codres=${r.codres}`,
       clientIp: actor.clientIp,
     });
+    // Un rebote de la familia afiliación queda anotado en la Organization:
+    // es lo que la ficha de plataforma pinta como alerta, porque lo resuelve
+    // la plataforma con el banco — no el pagador reintentando.
+    if (esReboteDeAfiliacion(r.codres) && org.btC2pUltimoRebote !== r.codres) {
+      await prisma.organization.update({
+        where: { id: intent.organizationId },
+        data: { btC2pUltimoRebote: r.codres },
+      });
+    }
     return {
       ok: false,
       status: 422,
@@ -387,6 +401,19 @@ export async function cobrarPorC2p(
       confirmedAt: new Date(),
     },
   });
+
+  // El primer C2P0000 real ES la verificación del afiliado — el banco no
+  // ofrece cómo probarlo sin cobrar. Un éxito también limpia cualquier rebote
+  // de afiliación pendiente. Solo se escribe cuando algo cambia.
+  if (!org.btC2pVerifiedAt || org.btC2pUltimoRebote) {
+    await prisma.organization.update({
+      where: { id: intent.organizationId },
+      data: {
+        btC2pUltimoRebote: null,
+        ...(org.btC2pVerifiedAt ? {} : { btC2pVerifiedAt: new Date() }),
+      },
+    });
+  }
 
   await registrarApiEvent({
     organizationId: intent.organizationId,

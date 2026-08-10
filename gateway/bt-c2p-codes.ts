@@ -213,6 +213,30 @@ export const C2P_CODES: Record<string, C2pCodeInfo> = {
   },
 };
 
+/**
+ * Códigos que señalan un problema DE LA AFILIACIÓN del comercio (código
+ * errado, afiliado inexistente/inactivo, servicio bloqueado) — no del pagador
+ * ni de la red. Los resuelve la plataforma con el banco, jamás el pagador
+ * reintentando: por eso alimentan la alerta de la ficha de plataforma.
+ */
+const REBOTES_AFILIACION = new Set([
+  "C2P0017",
+  "C2P0019",
+  "C2P0070",
+  "C2P0076",
+  "C2P0077",
+  "C2P0078",
+  "C2P0093",
+  "C2P0108",
+  "C2P0110",
+  "C2P0111",
+  "C2P0113",
+]);
+
+export function esReboteDeAfiliacion(codres?: string): boolean {
+  return Boolean(codres && REBOTES_AFILIACION.has(codres));
+}
+
 export interface C2pDescription {
   headline: string;
   hint: string;
