@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { PrismaClient, type LeadEstado } from "@prisma/client";
@@ -353,7 +354,16 @@ export async function agregarCuenta(
   }
 
   await db.bankAccount.create({
-    data: { organizationId, accountNumber, alias, banco, merchantCode },
+    data: {
+      organizationId,
+      accountNumber,
+      alias,
+      banco,
+      merchantCode,
+      // Cuenta BT: nace con su token de webhook — la URL que el banco
+      // registra para la afiliación (el payload BT no trae cuenta destino).
+      webhookToken: banco === "BT" ? randomBytes(32).toString("hex") : null,
+    },
   });
   anotar(session, "cuenta_agregada", `${banco} …${accountNumber.slice(-4)}`, organizationId);
   revalidatePath(`/plataforma/comercios/${organizationId}`);

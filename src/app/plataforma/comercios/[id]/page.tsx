@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { URL_APP } from "@/lib/correo";
 import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
 import { logoUrlDe } from "@/lib/logo";
 import { describeC2p } from "../../../../../gateway/bt-c2p-codes";
@@ -425,11 +426,24 @@ export default async function ComercioPage({ params }: { params: { id: string } 
           <ul className="mt-3 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
             {comercio.accounts.map((a) =>
               a.isActive ? (
-                <li key={a.id} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="font-mono text-tinta">{a.accountNumber}</span>
-                  <span className="text-tinta-tenue">
-                    {a.banco} · {a.alias}
-                  </span>
+                <li key={a.id} className="px-5 py-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-tinta">{a.accountNumber}</span>
+                    <span className="text-tinta-tenue">
+                      {a.banco} · {a.alias}
+                    </span>
+                  </div>
+                  {a.banco === "BT" && a.webhookToken && (
+                    <div className="mt-2 rounded-control bg-tinta-fondo px-3 py-2">
+                      <p className="text-xs font-medium text-tinta-suave">
+                        URL de notificación para el banco (afiliación del
+                        Identificador de Pagos de esta cuenta)
+                      </p>
+                      <p className="mt-1 select-all break-all font-mono text-xs text-tinta">
+                        {URL_APP}/api/webhook/bt/{a.webhookToken}
+                      </p>
+                    </div>
+                  )}
                 </li>
               ) : (
                 <FilaCuentaPorAprobar

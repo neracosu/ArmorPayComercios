@@ -230,6 +230,12 @@ model BankAccount {
   banco          String   @default("BDT") // banco donde vive la cuenta: BDT | BT
   alias          String
   merchantCode   String?  @unique
+  // Sufijo secreto de la URL que el banco registra para la afiliación BT de
+  // esta cuenta (Identificador de Pagos). El payload del Tesoro NO trae la
+  // cuenta destino: la URL es el único discriminador de a quién pertenece el
+  // pago, así que cada cuenta BT lleva el suyo (64 hex, generado al crearla).
+  // Las cuentas BDT no lo usan: su webhook sí trae numero_cuenta.
+  webhookToken   String?  @unique
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

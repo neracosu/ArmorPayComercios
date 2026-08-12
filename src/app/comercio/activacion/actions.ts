@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
@@ -142,6 +143,12 @@ export async function registrarCuenta(
             parsed.data.banco === "BDT" && parsed.data.merchantCode
               ? parsed.data.merchantCode
               : null,
+          // Cuenta BT: nace con su token de webhook — la URL que el banco
+          // registra para la afiliación. Mientras la cuenta siga inactiva el
+          // receptor responde 503 (el banco reintenta), así que tener token
+          // antes de aprobarse no expone nada.
+          webhookToken:
+            parsed.data.banco === "BT" ? randomBytes(32).toString("hex") : null,
           // POR APROBAR: hasta que nosotros la activemos, la ingesta no le
           // atribuye pagos. La cuenta es dinero — la aprobación es nuestra.
           isActive: false,
