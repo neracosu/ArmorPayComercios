@@ -264,46 +264,51 @@ export default function BuscadorCobro({ hayTurno }: { hayTurno: boolean }) {
         </p>
       )}
 
-      {esperando && (
-        <div className="mt-6 rounded-card border border-dashed border-marca-600/40 bg-white p-8 text-center">
-          <Loader2 className="mx-auto h-6 w-6 animate-spin text-marca-700" aria-hidden />
-          <p className="mt-3 font-medium text-tinta">
-            Esperando al banco… {segundos}s
-          </p>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
-            La referencia todavía no llega. Seguimos revisando solos cada{" "}
-            {SONDEO_S} segundos — no hace falta tocar nada.
-          </p>
-          <button
-            type="button"
-            onClick={() => setEsperando(null)}
-            className="mt-4 rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
-          >
-            Cancelar
-          </button>
-        </div>
-      )}
-
-      {!esperando && resultado?.ok && resultado.pagos.length === 0 && (
+      {resultado?.ok && resultado.pagos.length === 0 && (
         <div className="mt-6 rounded-card border border-dashed border-tinta-borde bg-white p-8 text-center">
-          <p className="font-medium text-tinta">No aparece ningún pago con esos dígitos</p>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
-            {rendido
-              ? `Lo esperamos ${ESPERA_MAX_S} segundos y el banco no lo reportó. Verifica con el cliente que el pago se hizo a la cuenta correcta.`
-              : "Puede que el banco todavía no lo haya reportado. Si sigue sin aparecer, el pago no entró a la cuenta."}
+          <p className="font-medium text-tinta">
+            El banco no ha reportado ningún pago con esos dígitos
           </p>
-          {rendido && (
-            <button
-              type="button"
-              onClick={() => {
-                setRendido(false);
-                setSegundos(0);
-                setEsperando(resultado.sufijo);
-              }}
-              className="mt-4 rounded-control bg-marca-700 px-4 py-2 text-sm font-medium text-white hover:bg-marca-900"
-            >
-              Seguir esperando
-            </button>
+          {esperando ? (
+            <>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
+                Si el cliente acaba de pagar, la notificación tarda unos
+                segundos. Seguimos revisando solos — si llega, aparece aquí sin
+                tocar nada.
+              </p>
+              <p className="mt-3 flex items-center justify-center gap-2 text-sm text-marca-700">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Escuchando al banco… {segundos}s
+              </p>
+              <button
+                type="button"
+                onClick={() => setEsperando(null)}
+                className="mt-4 rounded-control border border-tinta-borde px-4 py-2 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tinta-tenue">
+                {rendido
+                  ? `Lo esperamos ${ESPERA_MAX_S} segundos y el banco no lo reportó. Verifica con el cliente que el pago se hizo a la cuenta correcta.`
+                  : "Puede que el banco todavía no lo haya reportado. Si sigue sin aparecer, el pago no entró a la cuenta."}
+              </p>
+              {rendido && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRendido(false);
+                    setSegundos(0);
+                    setEsperando(resultado.sufijo);
+                  }}
+                  className="mt-4 rounded-control bg-marca-700 px-4 py-2 text-sm font-medium text-white hover:bg-marca-900"
+                >
+                  Seguir esperando
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
