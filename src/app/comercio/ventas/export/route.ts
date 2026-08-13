@@ -47,13 +47,24 @@ export async function GET(req: Request): Promise<Response> {
         amountUSD: true,
         overpaidVES: true,
         c2pReferencia: true,
-        bankTransaction: { select: { referencia: true, banco: true } },
+        c2pCelular: true,
+        c2pCedula: true,
+        c2pBancoPagador: true,
+        bankTransaction: {
+          select: {
+            referencia: true,
+            banco: true,
+            desdeBanco: true,
+            desdeCuenta: true,
+            desdeDni: true,
+          },
+        },
       },
     })
   );
 
   const csv = aCsv(
-    ["Creada", "Confirmada", "Estado", "Método", "Concepto", "Ref. externa", "Monto Bs", "Monto USD", "Sobrepago Bs", "Referencia bancaria", "Banco receptor"],
+    ["Creada", "Confirmada", "Estado", "Método", "Concepto", "Ref. externa", "Monto Bs", "Monto USD", "Sobrepago Bs", "Referencia bancaria", "Banco receptor", "Banco pagador", "Teléfono/cuenta pagador", "Cédula pagador"],
     intents.map((i) => [
       fechaCsv(i.createdAt),
       fechaCsv(i.confirmedAt),
@@ -66,6 +77,9 @@ export async function GET(req: Request): Promise<Response> {
       i.overpaidVES ? montoCsv(i.overpaidVES) : "",
       i.c2pReferencia ?? i.bankTransaction?.referencia ?? "",
       i.bankTransaction?.banco ?? (i.c2pReferencia ? "BT" : ""),
+      i.bankTransaction?.desdeBanco ?? i.c2pBancoPagador ?? "",
+      i.bankTransaction?.desdeCuenta ?? i.c2pCelular ?? "",
+      i.bankTransaction?.desdeDni ?? i.c2pCedula ?? "",
     ])
   );
 

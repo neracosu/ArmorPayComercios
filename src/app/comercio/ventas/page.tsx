@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShoppingBag } from "lucide-react";
+import { ChevronDown, ShoppingBag } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { inicioDelDia } from "@/lib/operacion";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
+import { bancoLabel } from "@/lib/bancos-ve";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,20 @@ const CHIP: Record<Estado, { texto: string; clase: string }> = {
 
 function bs(n: number): string {
   return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// El banco manda "hhmmss" y "yyyy-mm-dd"; acá se pintan legibles.
+function horaBanco(h: string): string {
+  return h.length === 6 ? `${h.slice(0, 2)}:${h.slice(2, 4)}:${h.slice(4)}` : h;
+}
+
+function fechaBanco(f: string): string {
+  const [y, m, d] = f.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : f;
+}
+
+function tipoProdTexto(t: string): string {
+  return t === "CELE" ? "celular" : t === "CNTA" ? "cuenta" : t;
 }
 
 export default async function VentasPage({
@@ -81,11 +96,27 @@ export default async function VentasPage({
             status: true,
             c2pReferencia: true,
             c2pCodres: true,
+            c2pCelular: true,
+            c2pCedula: true,
+            c2pBancoPagador: true,
             overpaidVES: true,
             expiresAt: true,
             confirmedAt: true,
             createdAt: true,
-            bankTransaction: { select: { referencia: true, banco: true } },
+            bankTransaction: {
+              select: {
+                referencia: true,
+                banco: true,
+                numeroCuenta: true,
+                desdeBanco: true,
+                desdeCuenta: true,
+                desdeDni: true,
+                tipoProd: true,
+                fechaTransaccion: true,
+                horaTransaccion: true,
+                descripcion: true,
+              },
+            },
           },
         }),
         prisma.apiKey.count(),
@@ -216,8 +247,33 @@ export default async function VentasPage({
               const chip = CHIP[estado];
               const refBancaria =
                 i.method === "C2P" ? i.c2pReferencia : i.bankTransaction?.referencia;
-              return (
-                <li key={i.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+              const tx = i.bankTransaction;
+              // Detalle del pagador: para Referencia sale del webhook del banco;
+              // para C2P, de lo que el cliente tecleó (persistido desde 13-08-2026).
+              const detalle: Array<[string, string]> = (
+                tx
+                  ? [
+                      ["Pagado desde", `${tipoProdTexto(tx.tipoProd)} ${tx.desdeCuenta}`],
+                      ["Banco emisor", bancoLabel(tx.desdeBanco)],
+                      ["Cédula del pagador", tx.desdeDni],
+                      ["Recibido en", `${tx.banco} · cuenta ${tx.numeroCuenta}`],
+                      [
+                        "Fecha y hora del banco",
+                        `${fechaBanco(tx.fechaTransaccion)} ${horaBanco(tx.horaTransaccion)}`,
+                      ],
+                      ["Descripción del banco", tx.descripcion],
+                    ]
+                  : [
+                      ["Celular del pagador", i.c2pCelular ?? ""],
+                      ["Banco pagador", bancoLabel(i.c2pBancoPagador)],
+                      ["Cédula del pagador", i.c2pCedula ?? ""],
+                      ["Referencia bancaria", i.c2pReferencia ?? ""],
+                      ["Respuesta del banco", i.c2pCodres ?? ""],
+                    ]
+              ).filter((par): par is [string, string] => Boolean(par[1] && par[1].trim()));
+              const expandible = Boolean(tx) || i.method === "C2P";
+              const resumen = (
+                <>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-tinta">
                       {i.externalRef}
@@ -252,6 +308,45 @@ export default async function VentasPage({
                       {chip.texto}
                     </span>
                   </div>
+                </>
+              );
+              if (!expandible) {
+                return (
+                  <li key={i.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                    {resumen}
+                  </li>
+                );
+              }
+              return (
+                <li key={i.id}>
+                  <details className="group">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-5 py-3 hover:bg-tinta-fondo/60 [&::-webkit-details-marker]:hidden">
+                      {resumen}
+                      <ChevronDown
+                        className="h-4 w-4 shrink-0 text-tinta-tenue transition-transform group-open:rotate-180"
+                        aria-hidden
+                      />
+                    </summary>
+                    <div className="border-t border-dashed border-tinta-borde bg-tinta-fondo/40 px-5 py-4">
+                      {detalle.length > 0 ? (
+                        <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+                          {detalle.map(([etiqueta, valor]) => (
+                            <div key={etiqueta}>
+                              <dt className="text-tinta-tenue">{etiqueta}</dt>
+                              <dd className="mt-0.5 break-words font-medium text-tinta">
+                                {valor}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <p className="text-sm text-tinta-tenue">
+                          Los datos del pagador no quedaron registrados: este cobro es
+                          anterior a la actualización del 13-08-2026.
+                        </p>
+                      )}
+                    </div>
+                  </details>
                 </li>
               );
             })}

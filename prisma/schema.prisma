@@ -469,6 +469,12 @@ model CheckoutIntent {
   bankTransactionId String? // camino REFERENCIA
   c2pReferencia     String? // camino C2P (referencia bancaria)
   c2pCodres         String?
+  // Datos del pagador C2P tal como los tecleó el cliente. Van en el intent y
+  // no solo en el claim porque el claim nace únicamente si el banco aprobó:
+  // acá quedan también los intentos rechazados.
+  c2pCelular        String?
+  c2pCedula         String?
+  c2pBancoPagador   String?
   gatewayResponse   String?  @db.Text // crudo del banco — evidencia forense
   overpaidVES       Decimal? @db.Decimal(18, 2)
   expiresAt      DateTime

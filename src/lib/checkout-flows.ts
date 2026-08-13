@@ -329,7 +329,15 @@ export async function cobrarPorC2p(
     const traducido = describeC2p(r.codres, r.message);
     const fallido = await prisma.checkoutIntent.update({
       where: { id: intent.id },
-      data: { status: "FAILED", method: "C2P", c2pCodres: r.codres, gatewayResponse: r.raw },
+      data: {
+        status: "FAILED",
+        method: "C2P",
+        c2pCodres: r.codres,
+        c2pCelular: datos.celular,
+        c2pCedula: datos.cedula,
+        c2pBancoPagador: datos.bancoPagador,
+        gatewayResponse: r.raw,
+      },
     });
     await registrarApiEvent({
       organizationId: intent.organizationId,
@@ -397,6 +405,9 @@ export async function cobrarPorC2p(
       method: "C2P",
       c2pReferencia: referencia,
       c2pCodres: r.codres,
+      c2pCelular: datos.celular,
+      c2pCedula: datos.cedula,
+      c2pBancoPagador: datos.bancoPagador,
       gatewayResponse: r.raw,
       confirmedAt: new Date(),
     },
