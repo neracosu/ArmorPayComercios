@@ -405,7 +405,7 @@ Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED
           </p>
           <Metodo verbo="POST" ruta="/api/v1/intents/{id}/c2p" />
           <pre className={codigo}>{`{
-  "celular": "04121234567",         # 04(12|14|16|24|26) + 7 dígitos
+  "celular": "04121234567",         # 04 + 9 dígitos (0412, 0422, …)
   "bancoPagador": "0102",           # del catálogo C2P (ver Bancos)
   "cedula": "V12345678",
   "otp": "12345678"                 # clave dinámica que generó tu cliente

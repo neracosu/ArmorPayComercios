@@ -84,7 +84,9 @@ export async function validarReferenciaPublica(
 
 const c2pSchema = z.object({
   intentId: z.string().min(1),
-  celular: z.string().trim().regex(/^04(12|14|16|24|26)\d{7}$/, "Escribe tu celular completo (04XX…)"),
+  // Sin lista blanca de prefijos: los bancos digitales emiten números
+  // virtuales (0422, …) que son válidos en Pago Móvil.
+  celular: z.string().trim().regex(/^04\d{9}$/, "Escribe tu celular completo (04XX…)"),
   banco: z.string().trim().regex(/^\d{4}$/, "Elige el banco de tu cuenta"),
   cedula: z.string().trim().regex(/^[VEPvep]?\d{6,9}$/, "Escribe tu cédula (solo números, o V/E adelante)"),
   otp: z.string().trim().regex(/^\d{4,12}$/, "Escribe la clave numérica que te dio tu banco"),

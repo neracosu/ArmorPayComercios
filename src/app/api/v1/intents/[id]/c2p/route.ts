@@ -15,7 +15,10 @@ export const dynamic = "force-dynamic";
  */
 
 const bodySchema = z.object({
-  celular: z.string().trim().regex(/^04(12|14|16|24|26)\d{7}$/, "celular móvil venezolano"),
+  // Solo forma general: los prefijos válidos los decide el banco, no nosotros.
+  // Una lista blanca 0412/14/16/24/26 rechazaba los números virtuales de los
+  // bancos digitales (ej. 0422 del Banco Digital de los Trabajadores).
+  celular: z.string().trim().regex(/^04\d{9}$/, "celular venezolano (04 + 9 dígitos)"),
   bancoPagador: z.string().trim().regex(/^\d{4}$/, "código de banco del catálogo C2P"),
   cedula: z.string().trim().regex(/^[VEPvep]?\d{6,9}$/, "cédula V/E/P + 6-9 dígitos"),
   otp: z.string().trim().regex(/^\d{4,12}$/, "clave dinámica numérica"),

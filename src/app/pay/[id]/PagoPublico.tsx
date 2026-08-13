@@ -287,7 +287,7 @@ function PanelC2p({
               id="celular"
               name="celular"
               inputMode="numeric"
-              pattern="04(12|14|16|24|26)\d{7}"
+              pattern="04\d{9}"
               autoComplete="tel-national"
               required
               placeholder="04121234567"
