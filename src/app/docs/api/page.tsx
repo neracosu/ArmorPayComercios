@@ -421,6 +421,19 @@ Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED
 El monto y el concepto salen del intent — el body nunca los lleva.
 Pobla el select de bancos con GET /banks?service=c2p (los códigos del
 catálogo C2P no siempre coinciden con los del BCV).`}</pre>
+          <div className="mt-4 rounded-card border border-tinta-borde bg-tinta-fondo/60 p-4 text-sm leading-relaxed text-tinta-suave">
+            <p className="font-medium text-tinta">La marca del banco en tu checkout</p>
+            <p className="mt-1.5">
+              El Banco del Tesoro pide que su logo acompañe el flujo del Botón de
+              Pago. Nuestra página <code className="text-tinta">/pay</code> ya lo
+              muestra; si cobras C2P con tu propia interfaz sobre esta API,
+              muéstralo junto al formulario. Sírvelo directo de nuestro dominio:{" "}
+              <code className="text-tinta">https://armorpay.net/bancos/bt-marca.png</code>{" "}
+              (marca a color, para fondos claros) o{" "}
+              <code className="text-tinta">https://armorpay.net/bancos/bt-blanco.png</code>{" "}
+              (marca y nombre en blanco, para fondos oscuros).
+            </p>
+          </div>
         </section>
 
         {/* ── Exchange rate ── */}
