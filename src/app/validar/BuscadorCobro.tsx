@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, ArrowDownLeft, Check, Loader2, Search, TriangleAlert } from "lucide-react";
 import { buscar, cobrar, type ResultadoBusqueda, type ResultadoCobro } from "./actions";
+import { MarcaBt } from "@/components/BancoTesoro";
 
 function bolivares(monto: string): string {
   const n = Number(monto);
@@ -89,9 +90,10 @@ function FilaPago({ pago, hayTurno, unico }: { pago: any; hayTurno: boolean; uni
             {pago.banco && (
               <span
                 title="Banco donde entró el pago"
-                className="ml-2 inline-block rounded-full bg-marca-700/10 px-2 py-0.5 align-middle text-xs font-medium tracking-wide text-marca-700"
+                className="ml-2 inline-flex items-center gap-1.5 rounded-full bg-marca-700/10 px-2 py-0.5 align-middle text-xs font-medium tracking-wide text-marca-700"
               >
-                {pago.banco}
+                {pago.banco === "BT" && <MarcaBt className="h-3.5 w-auto" />}
+                {pago.banco === "BT" ? "Banco del Tesoro" : pago.banco}
               </span>
             )}
           </p>

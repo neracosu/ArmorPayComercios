@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { AlertTriangle, Check, Loader2, Zap } from "lucide-react";
 import { cobrarBotonDePago, type ResultadoBotonDePago } from "./actions";
+import { MarcaBt } from "@/components/BancoTesoro";
 
 function bolivares(monto: string): string {
   const n = Number(monto.replace(",", "."));
@@ -78,6 +79,16 @@ function FormularioC2p({
   return (
     <>
       <form action={accion} className="rounded-card border border-tinta-borde bg-white p-5">
+        {/* La marca del banco acá es requisito del convenio con el Tesoro. */}
+        <div className="mb-5 flex items-center gap-3 border-b border-tinta-borde pb-4">
+          <MarcaBt className="h-9 w-auto" />
+          <div>
+            <p className="font-semibold text-tinta">Botón de Pago · Banco del Tesoro</p>
+            <p className="text-xs leading-relaxed text-tinta-tenue">
+              El banco debita al cliente y abona a tu cuenta Tesoro al instante.
+            </p>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="monto-c2p" className={etiqueta}>

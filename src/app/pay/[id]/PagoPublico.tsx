@@ -17,6 +17,7 @@ import {
   cobrarC2pPublico,
   type ResultadoPago,
 } from "./actions";
+import { MarcaBt } from "@/components/BancoTesoro";
 
 interface IntentPublico {
   id: string;
@@ -206,8 +207,11 @@ function PanelReferencia({
         <p className="font-medium text-tinta">Paga por pago móvil a:</p>
         <ul className="mt-1.5 space-y-1">
           {comercio.cuentas.map((c) => (
-            <li key={c.cuenta}>
-              {NOMBRE_BANCO[c.banco] ?? c.banco} · cuenta {c.cuenta}
+            <li key={c.cuenta} className="flex items-center gap-2">
+              {c.banco === "BT" && <MarcaBt className="h-4 w-auto" />}
+              <span>
+                {NOMBRE_BANCO[c.banco] ?? c.banco} · cuenta {c.cuenta}
+              </span>
             </li>
           ))}
           <li className="flex items-center gap-2">
@@ -275,6 +279,14 @@ function PanelC2p({
 
   return (
     <div className="px-6 pb-6">
+      {/* La marca del banco acá es requisito del convenio con el Tesoro. */}
+      <div className="mb-4 flex items-center gap-2.5 rounded-control bg-tinta-fondo px-4 py-3">
+        <MarcaBt className="h-7 w-auto" />
+        <p className="text-sm leading-snug text-tinta-suave">
+          Pago inmediato con el <strong className="text-tinta">Botón de Pago</strong>{" "}
+          del Banco del Tesoro.
+        </p>
+      </div>
       <form ref={formRef} action={accion}>
         <input type="hidden" name="intentId" value={intent.id} />
 

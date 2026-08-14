@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ExternalLink, KeyRound, Landmark, FileText, Zap } from "lucide-react";
+import { ExternalLink, KeyRound, Landmark, FileText } from "lucide-react";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
@@ -8,6 +8,7 @@ import { logoUrlDe } from "@/lib/logo";
 import GestionLogo from "./GestionLogo";
 import GestionContacto from "./GestionContacto";
 import ContactoSoporte from "@/components/ContactoSoporte";
+import { MarcaBt } from "@/components/BancoTesoro";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,9 @@ export default async function PerfilPage() {
             <ul className="mt-3 divide-y divide-tinta-borde">
               {cuentas.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
-                  <span className="rounded-control bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-suave">
-                    {c.banco}
+                  <span className="inline-flex items-center gap-1.5 rounded-control bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-suave">
+                    {c.banco === "BT" && <MarcaBt className="h-3.5 w-auto" />}
+                    {c.banco === "BT" ? "Banco del Tesoro" : c.banco}
                   </span>
                   <span className="font-mono text-tinta">{c.accountNumber}</span>
                   <span className="text-tinta-tenue">{c.alias}</span>
@@ -162,7 +164,10 @@ export default async function PerfilPage() {
             )}
             {tieneBt && (
               <li>
-                <p className="text-tinta-suave">Identificador de Pagos (Tesoro)</p>
+                <p className="flex items-center gap-1.5 text-tinta-suave">
+                  <MarcaBt className="h-3.5 w-auto" />
+                  Identificador de Pagos (Tesoro)
+                </p>
                 <p className={`font-medium ${credBt.clase}`}>
                   {credBt.texto}
                   {comercio?.btAppKeyHint && (
@@ -181,7 +186,7 @@ export default async function PerfilPage() {
             {comercio?.btCodAfiliado && (
               <li>
                 <p className="flex items-center gap-1.5 text-tinta-suave">
-                  <Zap className="h-3.5 w-3.5 text-marca-700" aria-hidden />
+                  <MarcaBt className="h-3.5 w-auto" />
                   C2P del Tesoro (Botón de Pago)
                 </p>
                 <p

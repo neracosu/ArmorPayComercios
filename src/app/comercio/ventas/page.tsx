@@ -7,6 +7,7 @@ import { inicioDelDia } from "@/lib/operacion";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
 import { bancoLabel } from "@/lib/bancos-ve";
+import { MarcaBt } from "@/components/BancoTesoro";
 
 export const dynamic = "force-dynamic";
 
@@ -256,7 +257,10 @@ export default async function VentasPage({
                       ["Pagado desde", `${tipoProdTexto(tx.tipoProd)} ${tx.desdeCuenta}`],
                       ["Banco emisor", bancoLabel(tx.desdeBanco)],
                       ["Cédula del pagador", tx.desdeDni],
-                      ["Recibido en", `${tx.banco} · cuenta ${tx.numeroCuenta}`],
+                      [
+                        "Recibido en",
+                        `${tx.banco === "BT" ? "Banco del Tesoro" : tx.banco} · cuenta ${tx.numeroCuenta}`,
+                      ],
                       [
                         "Fecha y hora del banco",
                         `${fechaBanco(tx.fechaTransaccion)} ${horaBanco(tx.horaTransaccion)}`,
@@ -281,8 +285,25 @@ export default async function VentasPage({
                     </p>
                     <p className="mt-0.5 text-sm text-tinta-tenue">
                       {new Date(i.createdAt).toLocaleString("es-VE")}
-                      {i.method && ` · ${i.method === "C2P" ? "C2P" : "Referencia"}`}
-                      {i.bankTransaction?.banco && ` · ${i.bankTransaction.banco}`}
+                      {/* El C2P es del Tesoro por definición; una venta por
+                          referencia lleva la marca si entró a una cuenta BT. */}
+                      {i.method === "C2P" ? (
+                        <>
+                          {" · "}
+                          <MarcaBt className="inline h-3.5 w-auto align-text-bottom" /> C2P
+                        </>
+                      ) : (
+                        i.method && " · Referencia"
+                      )}
+                      {i.bankTransaction?.banco === "BT" ? (
+                        <>
+                          {" · "}
+                          <MarcaBt className="inline h-3.5 w-auto align-text-bottom" /> Banco
+                          del Tesoro
+                        </>
+                      ) : (
+                        i.bankTransaction?.banco && ` · ${i.bankTransaction.banco}`
+                      )}
                       {estado === "CONFIRMED" && refBancaria && ` · Ref. ${refBancaria}`}
                       {estado === "FAILED" && i.c2pCodres && ` · ${i.c2pCodres}`}
                     </p>
@@ -328,6 +349,14 @@ export default async function VentasPage({
                       />
                     </summary>
                     <div className="border-t border-dashed border-tinta-borde bg-tinta-fondo/40 px-5 py-4">
+                      {(tx?.banco === "BT" || i.method === "C2P") && (
+                        <p className="mb-3 flex items-center gap-2 text-sm font-medium text-tinta">
+                          <MarcaBt className="h-5 w-auto" />
+                          {i.method === "C2P"
+                            ? "Cobro Botón de Pago · Banco del Tesoro"
+                            : "Pago recibido en el Banco del Tesoro"}
+                        </p>
+                      )}
                       {detalle.length > 0 ? (
                         <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
                           {detalle.map(([etiqueta, valor]) => (
