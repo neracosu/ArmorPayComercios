@@ -11,6 +11,14 @@ import { runAsPlatform } from "./tenant-context";
  * - Por IP en la validación de referencia: una referencia son 6+ dígitos —
  *   se adivina por fuerza bruta si se deja probar sin límite (15 / 5 min).
  *   Se cuenta CROSS-tenant a propósito: rotar de comercio no resetea el freno.
+ *
+ * El freno por IP mira SOLO el tráfico sin credencial (la página pública
+ * `/pay`), y por eso `apiKeyId: null` en el conteo. Lo aprendido el
+ * 2026-08-17: las tiendas de los comercios viven en este mismo servidor, así
+ * que TODAS llegan con la misma IP de salida — una venta legítima de VIP Play
+ * gastó 13 de los 15 intentos y el siguiente comprador de CUALQUIER comercio
+ * se habría comido un 429. Al tráfico con credencial lo frena su propia key,
+ * que es la que identifica al culpable de verdad.
  */
 
 const KEY_LIMIT = 60;
@@ -44,7 +52,7 @@ export async function rateLimitRefPorIp(clientIp: string): Promise<RateVerdict> 
   const desde = new Date(Date.now() - REF_IP_WINDOW_S * 1000);
   const usados = await runAsPlatform("rate limit: contar intentos por IP", () =>
     prisma.apiEvent.count({
-      where: { clientIp, action: { in: REF_ACTIONS }, createdAt: { gte: desde } },
+      where: { clientIp, apiKeyId: null, action: { in: REF_ACTIONS }, createdAt: { gte: desde } },
     })
   );
   return usados >= REF_IP_LIMIT

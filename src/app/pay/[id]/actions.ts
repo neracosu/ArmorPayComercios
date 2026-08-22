@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { runAsPlatform, runWithTenant } from "@/lib/tenant-context";
 import { rateLimitRefPorIp } from "@/lib/api-rate-limit";
+import { soloDigitos } from "@/lib/referencia";
 import { intentPublico } from "@/lib/checkout";
 import {
   confirmarPorReferencia,
@@ -38,7 +39,10 @@ async function cargarIntent(intentId: string) {
 
 const refSchema = z.object({
   intentId: z.string().min(1),
-  referencia: z.string().trim().regex(/^\d{6,20}$/, "Escribe al menos los últimos 6 dígitos"),
+  referencia: z
+    .string()
+    .transform(soloDigitos)
+    .refine((v) => /^\d{6,20}$/.test(v), "Escribe al menos los últimos 6 dígitos"),
 });
 
 export async function validarReferenciaPublica(

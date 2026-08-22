@@ -354,10 +354,18 @@ GET /api/v1/intents/{id}
             pago <strong className="text-tinta">existe, alcanza y no se usó antes</strong>{" "}
             — el mismo árbitro antifraude que usan las cajas físicas.
           </p>
+          <p className="mt-3 leading-relaxed text-tinta-suave">
+            Manda lo que te dé el cliente, tal cual: el banco nos notifica la referencia
+            en su forma y cada banco pagador la muestra a su manera. Emparejamos por el
+            final, así que da igual si viene con ceros de más, con espacios o con
+            guiones. Lo único que exigimos son 6 dígitos de verdad.
+          </p>
           <Metodo verbo="POST" ruta="/api/v1/intents/{id}/validate-reference" />
           <pre className={codigo}>{`{
   "referencia": "789123"            # 6 a 20 dígitos, del comprobante
-}
+}                                   # sirve completa o solo el final: los
+                                    # ceros de adelante y los separadores
+                                    # se limpian de nuestro lado
 
 → 200 (confirmado)
 {
@@ -386,8 +394,7 @@ Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED
               tu cliente paga. Si validas en el instante siguiente al pago, puede
               responder 404. El patrón correcto: reintenta la misma llamada cada 5-10
               segundos durante 1-2 minutos antes de decirle al cliente que verifique su
-              pago (nuestra página <code className="text-tinta">/pay</code> ya lo hace
-              sola). Si tras 2 minutos sigue en 404, lo más probable es que el pago haya
+              pago. Si tras 2 minutos sigue en 404, lo más probable es que el pago haya
               ido a otra cuenta.
             </p>
           </div>

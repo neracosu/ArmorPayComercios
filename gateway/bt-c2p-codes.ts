@@ -205,13 +205,77 @@ export const C2P_CODES: Record<string, C2pCodeInfo> = {
   C2P0117: { label: "Clave de caja inválida", severity: "err" },
   C2P0118: { label: "Caja con sesión abierta", severity: "err" },
 
-  // Rechazo sin código de familia (visto en el dev del banco).
+  // Rechazo sin código de familia (visto en el dev del banco Y en producción:
+  // 2026-08-17). Es genérico a propósito: el motivo real viene en `descRes`,
+  // que interpreta MENSAJES_BANCO.
   ERROR: {
     label: "Rechazado por el banco",
     severity: "err",
     hint: "El banco no aprobó el cobro. Verifica la clave y los datos, y genera una clave nueva.",
   },
 };
+
+/** Códigos que no dicen nada por sí solos: el motivo hay que leerlo del texto. */
+const CODIGOS_GENERICOS = new Set(["ERROR", "GEN0000"]);
+
+/**
+ * Cuando el banco rechaza con `codres: "ERROR"`, el motivo viaja en `descRes`
+ * como texto libre ("PIN INVALIDO", "SALDO INSUFICIENTE"…). Sin esto el
+ * pagador recibía "Rechazado por el banco" a secas y no tenía forma de saber
+ * que solo había escrito mal la clave dinámica — pasó en producción el
+ * 2026-08-17 y el comprador terminó pagando por otra vía.
+ *
+ * Se traduce por patrón y no por igualdad porque el texto del banco varía en
+ * acentos y espacios. Si ningún patrón pega, se muestra el texto crudo: nunca
+ * se inventa un motivo.
+ */
+const MENSAJES_BANCO: Array<{ patron: RegExp; info: C2pCodeInfo }> = [
+  {
+    patron: /\b(pin|clave)\b.*(invalid|errad|incorrect|no v[aá]lid)|(invalid|errad|incorrect).*\b(pin|clave)\b/i,
+    info: {
+      label: "Clave de pago incorrecta",
+      severity: "err",
+      hint: "La clave dinámica está mal escrita, venció o ya se usó. Genera una nueva desde tu banco e intenta otra vez.",
+    },
+  },
+  {
+    patron: /saldo|fondos/i,
+    info: {
+      label: "Saldo insuficiente",
+      severity: "err",
+      hint: "La cuenta del pagador no tiene fondos para este monto.",
+    },
+  },
+  {
+    patron: /l[ií]mite|excede|monto m[aá]ximo/i,
+    info: {
+      label: "Monto fuera del límite del pagador",
+      severity: "err",
+      hint: "El banco del pagador no permite este monto por operación. Puede subir su límite en su banca en línea o pagar por pago móvil.",
+    },
+  },
+  {
+    patron: /(no (existe|est[aá] (afiliad|registrad))|sin afiliaci[oó]n|no afiliad)/i,
+    info: {
+      label: "Pagador no afiliado al Botón de Pago",
+      severity: "err",
+      hint: "El celular y la cédula tienen que estar afiliados al pago móvil de ese banco.",
+    },
+  },
+  {
+    patron: /(celular|tel[eé]fono|c[eé]dula|documento).*(no coincide|errad|invalid|incorrect)/i,
+    info: {
+      label: "Datos del pagador incorrectos",
+      severity: "err",
+      hint: "Revisa el banco, el celular y la cédula: tienen que ser los que el pagador tiene afiliados.",
+    },
+  },
+];
+
+function interpretarMensajeBanco(bankMsg?: string): C2pCodeInfo | undefined {
+  if (!bankMsg) return undefined;
+  return MENSAJES_BANCO.find((m) => m.patron.test(bankMsg))?.info;
+}
 
 /**
  * Códigos que señalan un problema DE LA AFILIACIÓN del comercio (código
@@ -250,15 +314,22 @@ export interface C2pDescription {
  */
 export function describeC2p(code?: string, bankMsg?: string): C2pDescription {
   const info = code ? C2P_CODES[code] : undefined;
-  if (info) {
+  // Un código genérico no manda sobre el texto del banco: ahí el motivo real
+  // es el `descRes`. Un código con nombre propio sí manda (es del catálogo
+  // oficial y es más preciso que cualquier texto libre).
+  const generico = !info || (code !== undefined && CODIGOS_GENERICOS.has(code));
+  const elegido = (generico ? interpretarMensajeBanco(bankMsg) : undefined) ?? info;
+  if (elegido) {
+    const sinMotivo = elegido === info && generico && Boolean(bankMsg);
     return {
-      headline: info.severity === "ok" ? "Pago aprobado" : info.label,
-      hint:
-        info.hint ??
-        (info.severity === "ok"
-          ? ""
-          : "El banco no aprobó el cobro. Verifica los datos e intenta de nuevo."),
-      severity: info.severity,
+      headline: elegido.severity === "ok" ? "Pago aprobado" : elegido.label,
+      hint: sinMotivo
+        ? `El banco respondió: ${bankMsg}.`
+        : elegido.hint ??
+          (elegido.severity === "ok"
+            ? ""
+            : "El banco no aprobó el cobro. Verifica los datos e intenta de nuevo."),
+      severity: elegido.severity,
     };
   }
   return {

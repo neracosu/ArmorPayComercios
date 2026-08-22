@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withApiAuth, apiError, clientIpOf } from "@/lib/api-auth";
-import { rateLimitPorKey, rateLimitRefPorIp } from "@/lib/api-rate-limit";
+import { rateLimitPorKey } from "@/lib/api-rate-limit";
 import { intentPublico } from "@/lib/checkout";
 import { confirmarPorReferencia, intentNoOperable } from "@/lib/checkout-flows";
 import { bancoLabel } from "@/lib/bancos-ve";
+import { soloDigitos } from "@/lib/referencia";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,12 @@ export const dynamic = "force-dynamic";
  */
 
 const bodySchema = z.object({
-  referencia: z.string().trim().regex(/^\d{6,20}$/, "referencia de 6 a 20 dígitos"),
+  // Se limpian separadores antes de validar: el integrador reenvía lo que el
+  // comprador copió del comprobante, con espacios o guiones incluidos.
+  referencia: z
+    .string()
+    .transform(soloDigitos)
+    .refine((v) => /^\d{6,20}$/.test(v), "referencia de 6 a 20 dígitos"),
   bancoPagador: z.string().trim().regex(/^\d{4}$/).optional(),
   telefonoPagador: z.string().trim().max(15).optional(),
 });
@@ -25,8 +31,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return withApiAuth(req, async (auth) => {
     const clientIp = clientIpOf(req);
 
-    const porKey = await rateLimitPorKey(auth.apiKeyId);
-    const freno = porKey.limited ? porKey : await rateLimitRefPorIp(clientIp);
+    // Solo el freno por key: el de IP es para `/pay` (sin credencial). Las
+    // tiendas comparten la IP de este servidor y se frenaban entre ellas.
+    const freno = await rateLimitPorKey(auth.apiKeyId);
     if (freno.limited) {
       return NextResponse.json(
         { code: "RATE_LIMITED", message: "Demasiados intentos. Espera y reintenta." },

@@ -87,6 +87,12 @@ npx tsx --env-file=.env scripts/test-isolation.ts   # 10 casos, incluye barrido 
 
 Es la excepción explícita a la convención de "sin tests" del stack VPS. Cubre: fallo cerrado sin contexto, lectura acotada, referencia exacta ajena, barrido de 2.000 sufijos, acceso directo por id ajeno, escritura cruzada, y el intento de falsificar el dueño al crear.
 
+**La segunda excepción, por la misma razón** — `src/lib/referencia.ts` decide si un pago que YA entró al banco se reconoce; si falla no se rompe una pantalla, se pierde una venta con el dinero transferido. Correr tras tocarlo a él o a cualquiera de sus tres usos (checkout, caja, convergencia online):
+
+```bash
+npx tsx --env-file=.env scripts/test-referencia.ts   # 25 casos, incluye las referencias reales de la base
+```
+
 ## Roles
 
 `PLATFORM_ADMIN` (nosotros, sin organización) · `PLATFORM_REVIEWER` (empleado nuestro, sin organización: revisa recaudos, aprueba cuentas y avanza el ciclo de activación — NO activa comercios, NO toca llaves, NO crea usuarios; su nav solo ve Solicitudes y Comercios) · `ORG_ADMIN` (dueño del comercio) · `OPERATOR` (caja).
@@ -114,6 +120,23 @@ Puerto 3101, bind a 127.0.0.1.
 - **Desplegar**: `npm run deploy` — construye en `.next-staging` y, solo si el build pasa, intercambia el directorio (un `mv`, instantáneo) y recarga PM2. El disco nunca queda adelantado al proceso más que ese instante.
 
 **Ojo con el corte del reload**: en `fork_mode` con una instancia, `pm2 reload` es stop+start, no recarga sin corte. Quien tenga un formulario abierto en ese segundo recibe un error. Desplegar en horario de bajo tráfico.
+
+## Diagnóstico: dónde mirar cuando un cobro no cuadra
+
+Son tres fuentes y hay que cruzarlas ANTES de opinar. El 2026-08-17 se perdieron dos compras grandes y el cruce demostró que los compradores ni siquiera llegaron a llamarnos — pero de paso destapó un emparejamiento de referencias que sí era nuestro y estaba matando ventas. Sin los logs, la conclusión hubiera sido "los comercios abandonan".
+
+| Fuente | Dónde | Qué contesta |
+|---|---|---|
+| Access log de cPanel | `~/logs/armorpay.net.mardenli.com-ssl_log-<Mes>-<Año>.gz` (rota mensual, `zcat`) | Si la petición **llegó** y con qué status. Es la única que distingue "no nos llamaron" de "nos llamaron y fallamos". |
+| Logs de PM2 | `~/.pm2/logs/armorpay-cloud-{out,error}__<fecha>.log` | Excepciones del server. **No traen timestamp**: la fecha es el nombre del archivo. |
+| `ApiEvent` en base | `/plataforma/checkout/bitacora` o SQL | El detalle de negocio: `intent_created`, `ref_validated`, `ref_rejected`, `c2p_fail`, con `detail` y `clientIp`. |
+
+Cosas que ya costaron una confusión y no hay que volver a pagar:
+
+- **La hora del access log es la del servidor (PDT) = Venezuela − 3h.** La base está en UTC y PM2 corre en Caracas. Convertir siempre antes de reportar.
+- **`clientIp` casi siempre es `94.72.127.96`** y no es un atacante: las webs de los comercios viven en este mismo servidor, así que sus llamadas salen con la IP de acá. Por eso ningún freno puede ser "por IP" para tráfico con API key.
+- **`Failed to find Server Action "x"`** es un escáner (el id literal es `x`), no un comprador roto.
+- Un intent vive **30 minutos**. Un intent `EXPIRED` **sin** `ref_*` ni `c2p_*` en `ApiEvent` significa que el comprador nunca envió nada: la caída fue en la web del comercio, no acá.
 
 ## Notas
 

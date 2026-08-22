@@ -230,14 +230,15 @@ function PanelReferencia({
           id="referencia"
           name="referencia"
           inputMode="numeric"
-          pattern="\d{6,20}"
+          pattern="[\d\s.-]{6,25}"
           autoComplete="off"
           required
           placeholder="123456"
           className="w-full rounded-control border border-tinta-borde bg-white px-4 py-3 text-lg tracking-wider text-tinta placeholder:text-tinta-tenue focus:border-marca-600 focus:outline-none"
         />
         <p className="mt-1.5 text-xs text-tinta-tenue">
-          Está en el comprobante que te dio tu banco al pagar.
+          Está en el comprobante que te dio tu banco al pagar. Si trae ceros
+          adelante, pégala tal cual: nosotros la acomodamos.
         </p>
         <ZonaAccion>
           <BotonAccion>Confirmar mi pago</BotonAccion>

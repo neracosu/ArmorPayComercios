@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withApiAuth, apiError, clientIpOf } from "@/lib/api-auth";
-import { rateLimitPorKey, rateLimitRefPorIp } from "@/lib/api-rate-limit";
+import { rateLimitPorKey } from "@/lib/api-rate-limit";
 import { intentPublico } from "@/lib/checkout";
 import { cobrarPorC2p, intentNoOperable } from "@/lib/checkout-flows";
 
@@ -28,8 +28,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return withApiAuth(req, async (auth) => {
     const clientIp = clientIpOf(req);
 
-    const porKey = await rateLimitPorKey(auth.apiKeyId);
-    const freno = porKey.limited ? porKey : await rateLimitRefPorIp(clientIp);
+    // Solo el freno por key: el de IP es para `/pay` (sin credencial). Las
+    // tiendas comparten la IP de este servidor y se frenaban entre ellas.
+    const freno = await rateLimitPorKey(auth.apiKeyId);
     if (freno.limited) {
       return NextResponse.json(
         { code: "RATE_LIMITED", message: "Demasiados intentos. Espera y reintenta." },

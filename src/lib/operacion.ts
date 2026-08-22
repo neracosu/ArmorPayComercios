@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { mismaReferencia, sufijoBusqueda } from "./referencia";
 
 /**
  * Reglas de la operación de caja.
@@ -50,10 +51,13 @@ export interface PagoEncontrado {
  * la caja vea la alarma ANTES de confirmar, no después.
  */
 export async function buscarPorReferencia(sufijo: string): Promise<PagoEncontrado[]> {
-  const pagos = await prisma.bankTransaction.findMany({
-    where: { tipo: "CREDITO", referencia: { endsWith: sufijo } },
+  // Prefiltro por los últimos 6 dígitos + sufijo mutuo: el cliente puede
+  // dictar la referencia MÁS larga que la que manda el banco (misma lección
+  // del checkout, 2026-08-17). Se piden 50 y se recortan a 20 tras filtrar.
+  const conMismoFinal = await prisma.bankTransaction.findMany({
+    where: { tipo: "CREDITO", referencia: { endsWith: sufijoBusqueda(sufijo) } },
     orderBy: { receivedAt: "desc" },
-    take: 20,
+    take: 50,
     select: {
       id: true,
       montoTransaccion: true,
@@ -66,6 +70,9 @@ export async function buscarPorReferencia(sufijo: string): Promise<PagoEncontrad
       desdeDni: true,
     },
   });
+  const pagos = conMismoFinal
+    .filter((p) => mismaReferencia(p.referencia, sufijo) || p.referencia.endsWith(sufijo))
+    .slice(0, 20);
   if (pagos.length === 0) return [];
 
   const cobros = await prisma.paymentClaim.findMany({

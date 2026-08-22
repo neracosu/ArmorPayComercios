@@ -6,6 +6,7 @@ import { Prisma, type ValidationType } from "@prisma/client";
 import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import { buscarPorReferencia, turnoAbierto, type PagoEncontrado } from "@/lib/operacion";
+import { mismaReferencia, soloDigitos, sufijoBusqueda } from "@/lib/referencia";
 import { describeBdt, type BdtSeverity } from "@/lib/bdt-codes";
 import { execBdtValidar, execC2pPago, ExecError } from "@/lib/exec-client";
 import { describeC2p, esReboteDeAfiliacion } from "../../../gateway/bt-c2p-codes";
@@ -14,10 +15,13 @@ export type ResultadoBusqueda =
   | { ok: true; sufijo: string; pagos: PagoEncontrado[] }
   | { ok: false; error: string };
 
+// Hasta 20: el cliente dicta la referencia como se la muestra SU banco, que a
+// veces trae ceros a la izquierda y pasa de 9 dígitos. Antes el formulario la
+// rechazaba en la puerta y el cajero tenía que adivinar cuáles recortar.
 const sufijoSchema = z
   .string()
-  .trim()
-  .regex(/^\d{4,9}$/, "Escribí entre 4 y 9 dígitos de la referencia");
+  .transform(soloDigitos)
+  .refine((v) => /^\d{4,20}$/.test(v), "Escribí entre 4 y 20 dígitos de la referencia");
 
 export async function buscar(
   _previo: ResultadoBusqueda | null,
@@ -172,11 +176,6 @@ function montoNormalizado(v: string): string | null {
   if (!/^\d{1,16}(\.\d{1,2})?$/.test(limpio)) return null;
   const n = Number(limpio);
   return Number.isFinite(n) && n > 0 ? n.toFixed(2) : null;
-}
-
-/** Deja solo dígitos (la caja tipea teléfonos con espacios y guiones). */
-function soloDigitos(v: string): string {
-  return v.replace(/[\s.\-]/g, "");
 }
 
 /** Fecha de hoy en Venezuela como YYYYMMDD (el reloj del server NO es VE). */
@@ -396,11 +395,17 @@ export async function cobrarValidacion(
 
     // Convergencia: ¿el banco ya notificó este pago? Sufijo + cuenta; ante
     // ambigüedad desempata el monto; ante la duda, clave sintética.
-    const candidatos = await prisma.bankTransaction.findMany({
-      where: { tipo: "CREDITO", referencia: { endsWith: vr.reference }, numeroCuenta },
+    const conMismoFinal = await prisma.bankTransaction.findMany({
+      where: { tipo: "CREDITO", referencia: { endsWith: sufijoBusqueda(vr.reference) }, numeroCuenta },
       orderBy: { receivedAt: "desc" },
-      take: 20,
+      take: 50,
     });
+    // Sufijo mutuo: la consulta online y el webhook del banco no siempre
+    // devuelven la referencia con el mismo largo. Se conserva el `endsWith`
+    // clásico para referencias de menos de 6 dígitos, que el mutuo descarta.
+    const candidatos = conMismoFinal.filter(
+      (c) => mismaReferencia(c.referencia, vr.reference) || c.referencia.endsWith(vr.reference)
+    );
     let tx = candidatos.length === 1 ? candidatos[0] : null;
     if (!tx && candidatos.length > 1) {
       const porMonto = candidatos.filter((c) => {

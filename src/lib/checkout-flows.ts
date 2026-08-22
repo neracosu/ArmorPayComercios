@@ -2,6 +2,7 @@ import { Prisma, type CheckoutIntent } from "@prisma/client";
 import { prisma } from "./prisma";
 import { registrarApiEvent } from "./api-rate-limit";
 import { encolarWebhooks, maskRef, toleranciaVES } from "./checkout";
+import { mismaReferencia, REF_MIN_DIGITOS, soloDigitos, sufijoBusqueda, tecleoDeMas } from "./referencia";
 import { execC2pPago, ExecError } from "./exec-client";
 import { tasaBcv, usdAVes } from "./bcv";
 import { describeC2p, esReboteDeAfiliacion } from "../../gateway/bt-c2p-codes";
@@ -63,16 +64,28 @@ export async function confirmarPorReferencia(
   referencia: string,
   actor: ActorApi
 ): Promise<{ ok: true; intent: CheckoutIntent; pago: PagoConfirmado } | FlujoError> {
+  // El pagador copia del comprobante: puede venir con espacios o guiones.
+  const tecleada = soloDigitos(referencia);
   const rechazo = async (detalle: string) => {
     await registrarApiEvent({
       organizationId: intent.organizationId,
       apiKeyId: actor.apiKeyId,
       intentId: intent.id,
       action: "ref_rejected",
-      detail: `ref=${maskRef(referencia)} ${detalle}`,
+      detail: `ref=${maskRef(tecleada)} ${detalle}`,
       clientIp: actor.clientIp,
     });
   };
+
+  if (tecleada.length < REF_MIN_DIGITOS) {
+    await rechazo("menos de 6 dígitos");
+    return {
+      ok: false,
+      status: 400,
+      code: "VALIDATION",
+      message: `Escribe al menos los últimos ${REF_MIN_DIGITOS} dígitos de la referencia.`,
+    };
+  }
 
   const cuentas = await prisma.bankAccount.findMany({
     where: { isActive: true },
@@ -83,22 +96,38 @@ export async function confirmarPorReferencia(
     return { ok: false, status: 422, code: "MERCHANT_NOT_READY", message: "El comercio no tiene cuentas activas." };
   }
 
-  const pagos = await prisma.bankTransaction.findMany({
+  // Prefiltro barato por los últimos 6 dígitos y descarte fino por sufijo
+  // mutuo: la referencia tecleada puede venir MÁS larga que la del banco
+  // (ceros a la izquierda, número completo del comprobante). Filtrar en SQL
+  // por la cadena entera era lo que dejaba fuera al pago correcto.
+  const conMismoFinal = await prisma.bankTransaction.findMany({
     where: {
       tipo: "CREDITO",
-      referencia: { endsWith: referencia },
+      referencia: { endsWith: sufijoBusqueda(tecleada) },
       numeroCuenta: { in: cuentas.map((c) => c.accountNumber) },
     },
     orderBy: { receivedAt: "desc" },
-    take: 20,
+    take: 50,
   });
+  const pagos = conMismoFinal.filter((p) => mismaReferencia(p.referencia, tecleada));
   if (pagos.length === 0) {
-    await rechazo("sin coincidencias");
+    // La bitácora distingue "el pago todavía no llegó" de "llegó pero la
+    // referencia no empata": son dos problemas distintos y desde afuera se
+    // veían igual.
+    const largo = tecleoDeMas(
+      conMismoFinal.map((p) => p.referencia),
+      tecleada
+    );
+    await rechazo(
+      conMismoFinal.length > 0
+        ? `sin coincidencias (${conMismoFinal.length} con esos 6 dígitos finales${largo ? ", tecleó de más" : ""})`
+        : "sin coincidencias"
+    );
     return {
       ok: false,
       status: 404,
       code: "PAYMENT_NOT_FOUND",
-      message: "No encontramos ese pago. Si acabas de pagar, espera 1-2 minutos y reintenta.",
+      message: "No encontramos ese pago. Revisa los dígitos de la referencia; si acabas de pagar, espera 1-2 minutos y reintenta.",
     };
   }
 
