@@ -3,7 +3,7 @@
  * Plugin Name: ArmorPay para WooCommerce
  * Plugin URI: https://armorpay.net/docs/api
  * Description: Cobra en bolívares por pago móvil (referencia) y C2P, validado al instante por ArmorPay. El pedido se confirma solo cuando el banco confirma.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: ArmorPay — Plataforma de validación de pagos
  * Author URI: https://armorpay.net
  * License: GPL-2.0-or-later
@@ -194,42 +194,75 @@ function armorpay_init_gateway()
 
         /**
          * Crea el intent en ArmorPay y manda al cliente a la página de pago.
-         * Idempotency-Key = la order key: reintentar el checkout no duplica.
+         *
+         * Idempotency-Key = la order key: recargar el checkout o repetir el
+         * clic devuelve el MISMO cobro en vez de abrir otro. Pero la key sola
+         * no alcanza: el intent vive 30 minutos, y si el cliente vuelve a
+         * pagar el pedido después de eso, la misma key devuelve el intent
+         * YA VENCIDO y el pedido quedaría atrapado para siempre en la página
+         * de "este link de pago venció". Por eso se lleva un número de
+         * intento en el pedido y solo se sube cuando el intent devuelto ya no
+         * sirve.
          */
         public function process_payment($order_id)
         {
             $order = wc_get_order($order_id);
 
-            $response = wp_remote_post($this->api_base . '/api/v1/intents', [
-                'timeout' => 20,
-                'headers' => [
-                    'Content-Type'    => 'application/json',
-                    'Authorization'   => 'Bearer ' . $this->api_key,
-                    'Idempotency-Key' => 'wc-' . $order->get_order_key(),
-                ],
-                'body' => wp_json_encode([
-                    'externalRef' => (string) $order->get_id(),
-                    'amountVES'   => number_format((float) $order->get_total(), 2, '.', ''),
-                    'concepto'    => get_bloginfo('name') . ' pedido ' . $order->get_id(),
-                ]),
-            ]);
+            $intento = (int) $order->get_meta('_armorpay_intento');
+            $intent  = null;
 
-            if (is_wp_error($response)) {
-                wc_add_notice('No pudimos conectar con el validador de pagos. Intenta de nuevo.', 'error');
-                return ['result' => 'failure'];
+            // Dos vueltas como mucho: la primera puede traer el vencido.
+            for ($vuelta = 0; $vuelta < 2; $vuelta++) {
+                $key = 'wc-' . $order->get_order_key() . ($intento > 0 ? '-' . $intento : '');
+
+                $response = wp_remote_post($this->api_base . '/api/v1/intents', [
+                    'timeout' => 20,
+                    'headers' => [
+                        'Content-Type'    => 'application/json',
+                        'Authorization'   => 'Bearer ' . $this->api_key,
+                        'Idempotency-Key' => $key,
+                    ],
+                    'body' => wp_json_encode([
+                        'externalRef' => (string) $order->get_id(),
+                        'amountVES'   => number_format((float) $order->get_total(), 2, '.', ''),
+                        'concepto'    => get_bloginfo('name') . ' pedido ' . $order->get_id(),
+                    ]),
+                ]);
+
+                if (is_wp_error($response)) {
+                    wc_add_notice('No pudimos conectar con el validador de pagos. Intenta de nuevo.', 'error');
+                    return ['result' => 'failure'];
+                }
+
+                $code = wp_remote_retrieve_response_code($response);
+                $body = json_decode(wp_remote_retrieve_body($response), true);
+                if (($code !== 200 && $code !== 201) || empty($body['intent']['id'])) {
+                    $motivo = isset($body['message']) ? $body['message'] : ('HTTP ' . $code);
+                    $order->add_order_note('ArmorPay: no se pudo crear el cobro — ' . $motivo);
+                    wc_add_notice('No pudimos iniciar el cobro. Intenta de nuevo o elige otro método.', 'error');
+                    return ['result' => 'failure'];
+                }
+
+                $estado = isset($body['intent']['status']) ? $body['intent']['status'] : 'PENDING';
+                if ($estado !== 'EXPIRED') {
+                    // PENDING sirve; CONFIRMED también (la página de pago le
+                    // muestra al cliente que ese pedido ya está pago) y FAILED
+                    // se puede reintentar sobre el mismo intent.
+                    $intent = $body['intent'];
+                    break;
+                }
+                $intento++; // vencido: la próxima vuelta pide uno nuevo
             }
 
-            $code = wp_remote_retrieve_response_code($response);
-            $body = json_decode(wp_remote_retrieve_body($response), true);
-            if (($code !== 200 && $code !== 201) || empty($body['intent']['id'])) {
-                $motivo = isset($body['message']) ? $body['message'] : ('HTTP ' . $code);
-                $order->add_order_note('ArmorPay: no se pudo crear el cobro — ' . $motivo);
+            if (!$intent) {
+                $order->add_order_note('ArmorPay: el cobro venció y no se pudo abrir uno nuevo.');
                 wc_add_notice('No pudimos iniciar el cobro. Intenta de nuevo o elige otro método.', 'error');
                 return ['result' => 'failure'];
             }
 
-            $intent_id = sanitize_text_field($body['intent']['id']);
+            $intent_id = sanitize_text_field($intent['id']);
             $order->update_meta_data('_armorpay_intent_id', $intent_id);
+            $order->update_meta_data('_armorpay_intento', $intento);
             $order->update_status('pending', 'ArmorPay: esperando confirmación del pago.');
             $order->save();
 

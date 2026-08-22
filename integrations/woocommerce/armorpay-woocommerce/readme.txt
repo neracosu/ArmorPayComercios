@@ -4,7 +4,7 @@ Tags: pago movil, venezuela, bolivares, c2p, woocommerce
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,9 @@ Sí. El comercio se registra en https://armorpay.net y queda operativo al comple
 Solo el identificador del cobro en el pedido. La validación bancaria completa vive en ArmorPay.
 
 == Changelog ==
+
+= 1.0.1 =
+* Corregido: si el cobro vencía (30 minutos) y el cliente volvía a pagar el mismo pedido, la tienda lo mandaba una y otra vez al enlace vencido. Ahora abre uno nuevo.
 
 = 1.0.0 =
 * Versión inicial: cobro por referencia y C2P, webhook firmado con respaldo por consulta, compatible con HPOS.

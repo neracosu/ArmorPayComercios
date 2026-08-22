@@ -329,6 +329,28 @@ GET /api/v1/intents/{id}
 → 200 { "intent": { ...la misma forma... } }
 # Consúltalo al volver el cliente a tu tienda o como respaldo del webhook.
 # Es de lectura: consultarlo no cambia nada.`}</pre>
+          <div className="mt-4 rounded-card border border-alerta/40 bg-alerta-suave/40 p-4 text-sm leading-relaxed text-tinta-suave">
+            <p className="font-medium text-tinta">
+              La Idempotency-Key sale del PEDIDO, no de cada carga de la página
+            </p>
+            <p className="mt-1.5">
+              Es el error de integración más común que hemos visto en producción: la key
+              se genera con un id nuevo en cada render, así que un F5 del comprador —o un
+              doble clic en «Pagar»— abre un cobro nuevo en vez de recuperar el que ya
+              existía. Los intents huérfanos vencen y ensucian tus reportes; el comprador
+              termina con dos pantallas de pago para el mismo carrito.
+            </p>
+            <pre className="mt-2.5 overflow-x-auto font-mono text-xs text-tinta">
+{`✗ Idempotency-Key: armorpay-\${crypto.randomUUID()}   // nueva en cada render
+✓ Idempotency-Key: pedido-8812                       // el id de TU pedido`}
+            </pre>
+            <p className="mt-2">
+              Con la key del pedido, recargar devuelve el <strong className="text-tinta">mismo</strong>{" "}
+              intent con 200. Y si ese intent ya venció (30 min), ahí sí toca uno nuevo:
+              agrégale un sufijo de intento —{" "}
+              <code className="text-tinta">pedido-8812-2</code> — en vez de un id al azar.
+            </p>
+          </div>
           <div className="mt-4 rounded-card border border-tinta-borde bg-tinta-fondo p-4 text-sm leading-relaxed text-tinta-suave">
             <p className="font-medium text-tinta">Ciclo de vida del intent</p>
             <pre className="mt-2 overflow-x-auto font-mono text-xs text-tinta">
@@ -385,6 +407,29 @@ Reglas de monto: se acepta un faltante de hasta max(1 Bs, 0.5%).
 Subpago → 422 INSUFFICIENT_AMOUNT (con faltanteVES).
 Sobrepago → se confirma y queda en overpaidVES.
 Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED.`}</pre>
+          <div className="mt-4 rounded-card border border-alerta/40 bg-alerta-suave/40 p-4 text-sm leading-relaxed text-tinta-suave">
+            <p className="font-medium text-tinta">
+              El campo de tu formulario: 6 a 20 dígitos, y no recortes
+            </p>
+            <p className="mt-1.5">
+              Cada banco pagador le muestra la referencia a su manera: unos dan 9 dígitos,
+              otros 12 con ceros por delante, otros la separan con espacios. Nosotros
+              emparejamos por el final <strong className="text-tinta">en los dos
+              sentidos</strong>, así que da igual cuál de las dos venga más larga — pero
+              solo si tu formulario deja escribir o pegar lo que el banco le mostró al
+              comprador.
+            </p>
+            <pre className="mt-2.5 overflow-x-auto font-mono text-xs text-tinta">
+{`✗ <input maxlength="9" pattern="\\d{6,9}">   // el comprador no puede pegar la suya
+✓ <input inputmode="numeric">              // manda lo pegado tal cual`}
+            </pre>
+            <p className="mt-2">
+              No le quites espacios ni ceros antes de mandárnosla: eso lo hacemos
+              nosotros. Y no la recortes a los últimos 6 «por si acaso» — mientras más
+              dígitos manda el comprador, menos ambigüedad hay si tiene dos pagos
+              parecidos.
+            </p>
+          </div>
           <div className="mt-4 rounded-card border border-tinta-borde bg-tinta-fondo p-4 text-sm leading-relaxed text-tinta-suave">
             <p className="font-medium text-tinta">
               404 PAYMENT_NOT_FOUND no siempre es un error del cliente
@@ -428,6 +473,35 @@ Referencia ya cobrada (en caja o por otro intent) → 409 REFERENCE_ALREADY_USED
 El monto y el concepto salen del intent — el body nunca los lleva.
 Pobla el select de bancos con GET /banks?service=c2p (los códigos del
 catálogo C2P no siempre coinciden con los del BCV).`}</pre>
+          <div className="mt-4 rounded-card border border-alerta/40 bg-alerta-suave/40 p-4 text-sm leading-relaxed text-tinta-suave">
+            <p className="font-medium text-tinta">
+              Muéstrale al comprador el motivo, no «error al procesar»
+            </p>
+            <p className="mt-1.5">
+              El rechazo más común del C2P es la clave dinámica mal escrita o vencida —
+              y se arregla en 10 segundos si el comprador se entera. Nosotros traducimos
+              lo que responde el banco; píntalo tal cual y deja el formulario listo para
+              reintentar con una clave nueva.
+            </p>
+            <pre className="mt-2.5 overflow-x-auto font-mono text-xs text-tinta">
+{`→ 422
+{
+  "code": "C2P_REJECTED",
+  "message": "Clave de pago incorrecta",     # titular, ya en español
+  "hint": "La clave dinámica está mal escrita, venció o ya se usó.
+           Genera una nueva desde tu banco e intenta otra vez.",
+  "codres": "C2P0104",                       # el código crudo del banco
+  "retriable": true                          # el intent sigue vivo
+}`}
+            </pre>
+            <p className="mt-2">
+              Si el banco responde algo que no conocemos, en{" "}
+              <code className="text-tinta">hint</code> va su texto crudo: preferimos
+              decirte lo que dijo el banco antes que inventarte un motivo. Con{" "}
+              <code className="text-tinta">retriable: true</code> el intent sigue vivo
+              hasta que venza — no hace falta crear otro.
+            </p>
+          </div>
           <div className="mt-4 rounded-card border border-tinta-borde bg-tinta-fondo/60 p-4 text-sm leading-relaxed text-tinta-suave">
             <p className="font-medium text-tinta">La marca del banco en tu checkout</p>
             <p className="mt-1.5">
@@ -636,12 +710,12 @@ function verificar($secreto, $timestamp, $firma, $bodyCrudo) {
                   ["400", "VALIDATION / INVALID_AMOUNT", "El body no cumple el formato; el detalle viene en issues."],
                   ["404", "INTENT_NOT_FOUND", "Ese intent no existe (o no es tuyo)."],
                   ["410", "INTENT_EXPIRED", "Venció: crea un intent nuevo."],
-                  ["404", "PAYMENT_NOT_FOUND", "El pago aún no llegó. Reintenta cada 5-10 s durante 1-2 min."],
+                  ["404", "PAYMENT_NOT_FOUND", "El pago aún no llegó (o la referencia es de otra cuenta). Reintenta cada 5-10 s durante 1-2 min."],
                   ["422", "INSUFFICIENT_AMOUNT", "Subpago: faltanteVES dice cuánto falta."],
                   ["409", "AMBIGUOUS_REFERENCE", "Pide más dígitos de la referencia."],
                   ["409", "REFERENCE_ALREADY_USED", "Ese pago ya se cobró; cobradoPor dice dónde."],
                   ["422", "C2P_NOT_ENABLED", "El comercio no tiene C2P habilitado todavía."],
-                  ["422", "C2P_REJECTED", "El banco rechazó: muestra hint y permite clave nueva."],
+                  ["422", "C2P_REJECTED", "El banco rechazó: muestra message y hint tal cual, y deja reintentar con clave nueva."],
                   ["502", "BANK_UNAVAILABLE", "El banco no respondió: verifica antes de reintentar."],
                   ["422", "MERCHANT_NOT_READY", "El comercio no tiene cuentas activas."],
                   ["503", "RATE_UNAVAILABLE", "Sin tasa BCV utilizable: reintenta o cobra en VES."],
@@ -667,6 +741,9 @@ function verificar($secreto, $timestamp, $firma, $bodyCrudo) {
               ["Verificas la firma de cada webhook", "con el body crudo, y descartas timestamps de más de 5 minutos."],
               ["Entregas pedidos solo con CONFIRMED", "del webhook o de GET /intents/{id} — nunca por el postMessage ni porque el cliente 'volvió' a tu tienda."],
               ["Manejas PAYMENT_NOT_FOUND con reintentos", "la notificación del banco tarda segundos; no lo trates como fallo definitivo."],
+              ["Tu campo de referencia acepta 6 a 20 dígitos", "sin maxlength de 9 y sin recortar lo que el comprador pega: cada banco se la muestra distinto."],
+              ["La Idempotency-Key sale del pedido", "no de un id nuevo por render — si no, un F5 abre un cobro nuevo."],
+              ["Le muestras al comprador el motivo del rechazo", "message y hint del 422, sobre todo en C2P: casi siempre es solo la clave dinámica."],
               ["Procesas cada evento una sola vez", "mismo intent.id + event repetido = responder 200 sin repetir la entrega."],
               ["Hiciste una compra real de 1 Bs", "de punta a punta, webhook incluido, antes de anunciar el botón de pago."],
             ].map(([titulo, resto]) => (
