@@ -134,17 +134,19 @@ function buildClient(base: PrismaClient) {
 
 type ExtendedClient = ReturnType<typeof buildClient>;
 
-// Se cachea también en producción: Next puede evaluar este módulo más de una
-// vez en el mismo proceso (capas distintas del build), y cada evaluación sería
-// otro pool.
-const globalForPrisma = globalThis as unknown as {
-  prismaBase?: PrismaClient;
-  prisma?: ExtendedClient;
-};
+// Next evalúa este módulo (y `tenant-context.ts`) más de una vez en el mismo
+// proceso: las server actions viven en otra capa del build que las páginas y
+// los route handlers. Por eso se comparte en `globalThis` SOLO el cliente base
+// (el pool) y NUNCA el extendido: la extensión lee el AsyncLocalStorage de SU
+// copia de `tenant-context`. Si se reusara la de otra capa, `runWithTenant`
+// abriría el contexto en un storage y la extensión lo buscaría en otro →
+// «sin contexto de tenant» en cada acción (pasó el 2026-09-15 al registrar una
+// cuenta bancaria). `$extends` no abre conexiones: una por capa es gratis.
+const globalForPrisma = globalThis as unknown as { prismaBase?: PrismaClient };
 
 const base = (globalForPrisma.prismaBase ??= buildBaseClient());
 
-export const prisma: ExtendedClient = (globalForPrisma.prisma ??= buildClient(base));
+export const prisma: ExtendedClient = buildClient(base);
 
 /**
  * Cliente SIN aislamiento, sobre el mismo pool. Solo para las entradas que
