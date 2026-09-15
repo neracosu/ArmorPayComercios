@@ -1,15 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PrismaClient } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { prismaSinTenant } from "@/lib/prisma";
 
 /**
  * Acciones del monitoreo del checkout. Solo `PLATFORM_ADMIN` — mismo patrón
  * que el resto del panel: cliente sin extensión (la vista es multi-comercio
  * por definición) y el aislamiento lo da el rol, verificado en cada acción.
  */
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 export type ResultadoMonitoreo = { ok: true; mensaje: string } | { ok: false; error: string };
 

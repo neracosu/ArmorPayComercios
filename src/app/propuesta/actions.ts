@@ -2,9 +2,8 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
-import { PrismaClient } from "@prisma/client";
 import { runAsPlatform } from "@/lib/tenant-context";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaSinTenant } from "@/lib/prisma";
 import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
 import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
 import { SOPORTE_EMAIL } from "@/lib/soporte";
@@ -17,7 +16,7 @@ import { SOPORTE_EMAIL } from "@/lib/soporte";
  * que nadie llene la base a fuerza de envíos.
  */
 
-const leadDb = new PrismaClient();
+const leadDb = prismaSinTenant;
 
 const schema = z.object({
   empresa: z.string().trim().min(2, "Pon el nombre de tu empresa").max(120),

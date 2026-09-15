@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { ArrowRight, Building2, Inbox, KeyRound, Users } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // Sin extensión de tenant: el panel de plataforma es multi-comercio por
 // definición. El aislamiento acá lo da el rol, verificado en el layout.
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 const ESTADO_TEXTO: Record<string, string> = {
   REGISTRADA: "Registrada",

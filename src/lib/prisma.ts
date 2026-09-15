@@ -50,11 +50,35 @@ const WHERE_OPS = new Set([
 
 type AnyArgs = Record<string, unknown>;
 
-function buildClient() {
-  const base = new PrismaClient({
+/**
+ * Tope del pool por proceso. Sin él, Prisma abre hasta 2×núcleos+1 = 25
+ * conexiones POR CLIENTE y las deja dormidas. El 2026-09-15 teníamos 8 clientes
+ * sueltos (uno por archivo) y 54 conexiones dormidas en un MariaDB con tope de
+ * 151 que comparten ~15 apps del servidor, entre ellas el interno que factura:
+ * el servidor llegó a 149/151 y un comercio recién registrado no pudo entrar
+ * (`1040 Too many connections`). Un `connection_limit` explícito en
+ * DATABASE_URL tiene prioridad sobre este valor.
+ */
+const CONNECTION_LIMIT = 10;
+
+function datasourceUrl(): string | undefined {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return undefined;
+  const url = new URL(raw);
+  if (!url.searchParams.has("connection_limit")) {
+    url.searchParams.set("connection_limit", String(CONNECTION_LIMIT));
+  }
+  return url.toString();
+}
+
+function buildBaseClient() {
+  return new PrismaClient({
+    datasourceUrl: datasourceUrl(),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
+}
 
+function buildClient(base: PrismaClient) {
   return base.$extends({
     name: "tenant-isolation",
     query: {
@@ -110,11 +134,25 @@ function buildClient() {
 
 type ExtendedClient = ReturnType<typeof buildClient>;
 
-const globalForPrisma = globalThis as unknown as { prisma?: ExtendedClient };
+// Se cachea también en producción: Next puede evaluar este módulo más de una
+// vez en el mismo proceso (capas distintas del build), y cada evaluación sería
+// otro pool.
+const globalForPrisma = globalThis as unknown as {
+  prismaBase?: PrismaClient;
+  prisma?: ExtendedClient;
+};
 
-export const prisma: ExtendedClient = globalForPrisma.prisma ?? buildClient();
+const base = (globalForPrisma.prismaBase ??= buildBaseClient());
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma: ExtendedClient = (globalForPrisma.prisma ??= buildClient(base));
+
+/**
+ * Cliente SIN aislamiento, sobre el mismo pool. Solo para las entradas que
+ * legítimamente operan antes o por encima de un tenant (login, registro,
+ * panel de plataforma) y verifican el rol por su cuenta. Nunca `new
+ * PrismaClient()` suelto: cada instancia es un pool propio.
+ */
+export const prismaSinTenant: PrismaClient = base;
 
 /** Solo para diagnóstico y tests de aislamiento. */
 export const tenantModels = TENANT_MODELS;

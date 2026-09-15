@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { ArrowRight, Building2 } from "lucide-react";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   REGISTRADA: { texto: "Registrada", clase: "bg-tinta-fondo text-tinta-tenue" },

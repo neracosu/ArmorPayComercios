@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
-import { PrismaClient } from "@prisma/client";
 import { authOptions } from "./auth";
 import { runWithTenant, runAsPlatform } from "./tenant-context";
+import { prismaSinTenant } from "@/lib/prisma";
 
 /**
  * Sesión verificada + apertura del contexto de tenant.
@@ -15,7 +15,7 @@ import { runWithTenant, runAsPlatform } from "./tenant-context";
  *     cajas, que son PCs fijas. Un `ORG_ADMIN` o un `PLATFORM_ADMIN` con 30
  *     días de sesión es otra cosa: se cortan a las 8 h vía `loginAt`.
  */
-const guardDb = new PrismaClient();
+const guardDb = prismaSinTenant;
 
 const ADMIN_MAX_SESSION_S = 60 * 60 * 8;
 const ADMIN_ROLES = new Set(["PLATFORM_ADMIN", "PLATFORM_REVIEWER", "ORG_ADMIN"]);

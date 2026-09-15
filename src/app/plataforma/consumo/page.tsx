@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 /**
  * Consumo por comercio — la evidencia para decidir el modelo de cobro.

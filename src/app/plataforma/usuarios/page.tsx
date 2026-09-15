@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { CrearInterno, BotonAlternarInterno } from "./GestionInternos";
 import { BotonResetClave } from "../comercios/[id]/Contacto";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 const ROL: Record<string, { texto: string; clase: string }> = {
   PLATFORM_ADMIN: { texto: "Plataforma", clase: "bg-tinta text-white" },

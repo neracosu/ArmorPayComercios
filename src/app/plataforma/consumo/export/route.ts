@@ -1,10 +1,10 @@
-import { PrismaClient } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { aCsv, montoCsv, respuestaCsv } from "@/lib/csv";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 /**
  * CSV del consumo por comercio (últimos 30 días) — la base de la facturación

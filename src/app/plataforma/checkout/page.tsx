@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getVerifiedSession } from "@/lib/session-guard";
 import BotonReencolar from "./BotonReencolar";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // Sin extensión de tenant: monitoreo multi-comercio por definición.
 // El aislamiento acá lo da el rol, verificado abajo.
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 /**
  * Monitoreo del checkout — la sala de máquinas que las Fases 3-6 no tenían.

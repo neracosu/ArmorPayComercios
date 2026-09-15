@@ -2,13 +2,13 @@
 
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
 import { headers } from "next/headers";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
 import { esRifJuridico, formatearRif, validarRif } from "@/lib/rif";
 import { CORREO_INTERNO, enviarCorreo, URL_APP } from "@/lib/correo";
 import { SOPORTE_EMAIL } from "@/lib/soporte";
 import { TERMINOS_VERSION } from "@/lib/legales";
+import { prismaSinTenant } from "@/lib/prisma";
 
 /**
  * Registro self-service de un comercio.
@@ -23,7 +23,7 @@ import { TERMINOS_VERSION } from "@/lib/legales";
  * cual acotar — lo estamos creando.
  */
 
-const registroDb = new PrismaClient();
+const registroDb = prismaSinTenant;
 
 export type ResultadoRegistro = { ok: true; usuario: string } | { ok: false; error: string };
 

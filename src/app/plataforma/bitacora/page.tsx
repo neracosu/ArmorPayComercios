@@ -1,12 +1,12 @@
-import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ScrollText } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // Sin extensión de tenant: bitácora DE LA PLATAFORMA, el aislamiento lo da el rol.
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 /**
  * La bitácora de acciones administrativas (`PlatformEvent`): quién activó,

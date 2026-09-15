@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { PrismaClient, type LeadEstado } from "@prisma/client";
+import { type LeadEstado } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { generarPassword } from "@/lib/password";
 import { normalizeUsername, usernameSchema } from "@/lib/username";
@@ -16,6 +16,7 @@ import { cifrar, descifrar, pistaDeLlave } from "@/lib/crypto";
 import { LOGO_MAX_BYTES, tipoDeImagen } from "@/lib/logo";
 import { echoTest } from "../../../gateway/bdt";
 import { probarCredencialesBt } from "../../../gateway/bt-idpagos";
+import { prismaSinTenant } from "@/lib/prisma";
 
 /**
  * Acciones del panel de plataforma. Solo `PLATFORM_ADMIN`.
@@ -25,7 +26,7 @@ import { probarCredencialesBt } from "../../../gateway/bt-idpagos";
  * un comercio que todavía no existe). El aislamiento acá lo da el rol, no el
  * contexto — y por eso cada acción lo verifica primero, sin excepción.
  */
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 async function exigirPlataforma() {
   const session = await getVerifiedSession();

@@ -1,9 +1,9 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
 import { normalizeUsername } from "./username";
 import { segundosDeBloqueo, registrarFallo, limpiarFallos } from "./login-throttle";
+import { prismaSinTenant } from "@/lib/prisma";
 
 /**
  * Autenticación por usuario y contraseña, con el comercio incorporado.
@@ -18,7 +18,7 @@ import { segundosDeBloqueo, registrarFallo, limpiarFallos } from "./login-thrott
  * qué comercio pertenece quien entra. Es la única lectura legítima de `User`
  * sin contexto, y por eso está acotada a buscar por `username`.
  */
-const authDb = new PrismaClient();
+const authDb = prismaSinTenant;
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },

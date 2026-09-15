@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
 import { getVerifiedSession } from "@/lib/session-guard";
 import { URL_APP } from "@/lib/correo";
 import { AlertTriangle, ArrowLeft, KeyRound, Zap } from "lucide-react";
@@ -17,10 +16,11 @@ import CicloActivacion from "./CicloActivacion";
 import { ZonaPeligro } from "./ZonaPeligro";
 import { FilaRecaudoRevision, FilaCuentaPorAprobar, SubirRecaudoComercio } from "./RevisionExpediente";
 import { RECAUDOS_REQUERIDOS } from "@/lib/recaudos";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 const ROL: Record<string, string> = {
   PLATFORM_ADMIN: "Plataforma",

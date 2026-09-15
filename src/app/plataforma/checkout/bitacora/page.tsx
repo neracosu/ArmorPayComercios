@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ScrollText } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // Sin extensión de tenant: bitácora multi-comercio, el aislamiento lo da el rol.
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 /**
  * La bitácora forense de la API (`ApiEvent`), fila a fila. Es append-only y

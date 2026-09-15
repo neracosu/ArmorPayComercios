@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PrismaClient, type LeadEstado } from "@prisma/client";
+import { type LeadEstado } from "@prisma/client";
 import { Inbox } from "lucide-react";
 import { getVerifiedSession } from "@/lib/session-guard";
 import TarjetaLead from "./TarjetaLead";
+import { prismaSinTenant } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // Cliente sin la extensión de tenant: `Lead` es un modelo de plataforma y esta
 // pantalla es intencionalmente multi-comercio. El aislamiento acá lo da el rol.
-const db = new PrismaClient();
+const db = prismaSinTenant;
 
 const FILTROS: Array<{ clave: string; texto: string; estados: LeadEstado[] }> = [
   { clave: "", texto: "Pendientes", estados: ["NUEVO", "CONTACTADO"] },
