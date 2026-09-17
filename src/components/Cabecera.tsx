@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot, ClipboardList, Home, Image as ImageIcon, KeyRound, Landmark, Search, ShoppingBag, Store, Users } from "lucide-react";
+import { CircleDot, ClipboardList, Home, Image as ImageIcon, Inbox, KeyRound, Landmark, Search, ShoppingBag, Store, Users } from "lucide-react";
 import CerrarSesion from "./CerrarSesion";
 
 /**
@@ -14,6 +14,7 @@ export default function Cabecera({
   turnoAbierto,
   esAdminComercio = false,
   logoUrl = null,
+  ancho = false,
 }: {
   comercio: string;
   usuario: string;
@@ -21,10 +22,16 @@ export default function Cabecera({
   esAdminComercio?: boolean;
   /** Logo del comercio (`/api/logo/...`), o null si no cargó ninguno. */
   logoUrl?: string | null;
+  /** Las pantallas de reporte (tablas anchas) alinean la cabecera a su mismo ancho. */
+  ancho?: boolean;
 }) {
   return (
     <header className="border-b border-tinta-borde bg-white">
-      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+      <div
+        className={`mx-auto flex flex-wrap items-center justify-between gap-3 px-6 py-3 ${
+          ancho ? "max-w-7xl" : "max-w-3xl"
+        }`}
+      >
         <div className="flex items-center gap-2">
           <span className="font-display text-base font-bold tracking-tight text-tinta">
             Armor<span className="text-marca-700">Pay</span>
@@ -61,6 +68,13 @@ export default function Cabecera({
               aria-hidden
             />
             {turnoAbierto ? "Turno abierto" : "Sin turno"}
+          </Link>
+          <Link
+            href="/pagos"
+            className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
+          >
+            <Inbox className="h-4 w-4" aria-hidden />
+            Pagos
           </Link>
           {esAdminComercio && (
             <>
