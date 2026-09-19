@@ -4,18 +4,9 @@ import { getVerifiedSession, withSessionTenant } from "@/lib/session-guard";
 import { prisma } from "@/lib/prisma";
 import Cabecera from "@/components/Cabecera";
 import { logoUrlDe } from "@/lib/logo";
-import { describeBdt } from "@/lib/bdt-codes";
-import { describeC2p } from "../../../../gateway/bt-c2p-codes";
+import ListaConsultas, { SELECT_CONSULTA } from "@/components/ListaConsultas";
 
 export const dynamic = "force-dynamic";
-
-const TIPO: Record<string, string> = {
-  VAL_P2P: "P2P por cuenta",
-  VAL_P2P_CC: "P2P por comercio",
-  VAL_TRANSFER: "Transferencia",
-  VAL_TRANSACTION: "Movimiento",
-  BT_C2P: "Botón de Pago",
-};
 
 /**
  * Historial de consultas al banco y cobros C2P de las cajas. Cada intento
@@ -37,19 +28,7 @@ export default async function ConsultasPage() {
       prisma.validationRequest.findMany({
         orderBy: { createdAt: "desc" },
         take: 100,
-        select: {
-          id: true,
-          type: true,
-          reference: true,
-          amount: true,
-          bankCode: true,
-          responseCode: true,
-          durationMs: true,
-          createdAt: true,
-          user: { select: { name: true } },
-          account: { select: { alias: true, accountNumber: true } },
-          claim: { select: { id: true } },
-        },
+        select: SELECT_CONSULTA,
       }),
     ]);
     return { comercio, consultas };
@@ -83,50 +62,9 @@ export default async function ConsultasPage() {
             </p>
           </div>
         ) : (
-          <ul className="mt-6 divide-y divide-tinta-borde overflow-hidden rounded-card border border-tinta-borde bg-white">
-            {consultas.map((v) => {
-              const info =
-                v.type === "BT_C2P" ? describeC2p(v.responseCode, "") : describeBdt(v.responseCode);
-              const exito =
-                v.type === "BT_C2P" ? v.responseCode === "C2P0000" : info.severity === "ok";
-              return (
-                <li key={v.id} className="px-5 py-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-control bg-tinta-fondo px-2 py-0.5 text-xs font-medium text-tinta-suave">
-                      {TIPO[v.type] ?? v.type}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        exito
-                          ? "bg-ok-suave text-ok"
-                          : info.severity === "warn"
-                            ? "bg-alerta-suave text-alerta"
-                            : "bg-error-suave text-error"
-                      }`}
-                    >
-                      {info.headline}
-                    </span>
-                    {v.claim && (
-                      <span className="rounded-full bg-ok-suave px-2 py-0.5 text-xs font-medium text-ok">
-                        cobrado
-                      </span>
-                    )}
-                    <span className="ml-auto text-xs text-tinta-tenue">
-                      {new Date(v.createdAt).toLocaleString("es-VE")}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-tinta-tenue">
-                    Bs {v.amount}
-                    {v.reference && <> · ref …{v.reference.slice(-6)}</>}
-                    {v.account && <> · {v.account.alias} (…{v.account.accountNumber.slice(-4)})</>}
-                    {" · "}
-                    {v.user.name} · <span className="font-mono text-xs">{v.responseCode}</span> ·{" "}
-                    {v.durationMs}ms
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mt-6">
+            <ListaConsultas consultas={consultas} mostrarCaja />
+          </div>
         )}
         {consultas.length >= 100 && (
           <p className="mt-3 text-xs text-tinta-tenue">Se muestran las últimas 100.</p>

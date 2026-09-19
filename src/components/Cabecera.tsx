@@ -74,7 +74,9 @@ export default function Cabecera({
             className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-tinta-suave hover:bg-tinta-fondo"
           >
             <Inbox className="h-4 w-4" aria-hidden />
-            Pagos
+            {/* Misma ruta, dos vistas: el dueño ve lo que entró a sus cuentas;
+                la caja, solo lo que ella cobró y consultó. */}
+            {esAdminComercio ? "Pagos" : "Mis movimientos"}
           </Link>
           {esAdminComercio && (
             <>

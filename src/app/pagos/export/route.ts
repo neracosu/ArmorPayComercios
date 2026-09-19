@@ -14,12 +14,14 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * CSV de los pagos recibidos HOY (`?banco=BDT|BT` opcional). Lo baja la caja
- * o el dueño: mismas columnas que la pantalla /pagos, en el mismo orden.
+ * CSV de los pagos recibidos HOY (`?banco=BDT|BT` opcional): mismas columnas
+ * que la vista del dueño en /pagos, en el mismo orden. SOLO el dueño: es todo
+ * lo que entró a las cuentas del comercio, y una caja ve nada más lo suyo
+ * (hasta el 2026-09-18 esta ruta también le respondía al OPERATOR).
  */
 export async function GET(req: Request): Promise<Response> {
   const session = await getVerifiedSession();
-  if (!session || (session.user.role !== "ORG_ADMIN" && session.user.role !== "OPERATOR")) {
+  if (!session || session.user.role !== "ORG_ADMIN") {
     return new Response("No autorizado", { status: 401 });
   }
 

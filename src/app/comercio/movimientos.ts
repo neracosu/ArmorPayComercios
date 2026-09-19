@@ -270,20 +270,28 @@ function aFilaCobro(c: CobroCrudo): FilaCobro {
  * Cobros más recientes, opcionalmente de un banco. El banco se deduce fila a
  * fila (no es columna), así que con filtro se leen más filas de las que se
  * muestran y se recorta después.
+ *
+ * `userId` acota a los cobros de UNA caja: es lo único que un OPERATOR puede
+ * listar. Quien llame desde una pantalla de caja lo pasa SIEMPRE; sin él
+ * salen los de todo el comercio, que son del dueño.
  */
 export async function listarCobros(opts: {
   banco?: Banco;
   q?: string;
   desde?: Date;
   hasta?: Date;
+  userId?: string;
   take: number;
 }): Promise<FilaCobro[]> {
-  const { banco, q, desde, hasta, take } = opts;
+  const { banco, q, desde, hasta, userId, take } = opts;
   // Banco y búsqueda se resuelven en memoria: con cualquiera de los dos se
   // leen más filas de las que se muestran y se recorta después.
   const ampliar = Boolean(banco || q);
   const crudos = await prisma.paymentClaim.findMany({
-    where: desde || hasta ? { claimedAt: { gte: desde, lte: hasta } } : undefined,
+    where: {
+      ...(userId ? { userId } : {}),
+      ...(desde || hasta ? { claimedAt: { gte: desde, lte: hasta } } : {}),
+    },
     orderBy: { claimedAt: "desc" },
     take: ampliar ? Math.min(Math.max(take * 8, 2000), 5000) : take,
     select: SELECT_COBRO,
